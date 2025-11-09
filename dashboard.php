@@ -69,7 +69,17 @@ $user = getCurrentUser();
                     </div>
                 </div>
             </a>
-            
+
+            <a href="modules/finance/finance.php" class="hexagon-menu">
+                <div class="hexagon">
+                    <div class="hexagon-inner">
+                        <div class="hexagon-content">
+                            <span>Finance</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
             <a href="info.php" class="hexagon-menu">
                 <div class="hexagon">
                     <div class="hexagon-inner">
