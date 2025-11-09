@@ -1,0 +1,792 @@
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lexend', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    min-height: 100vh;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Login Page Styles */
+.login-page {
+    display: flex;
+    min-height: 100vh;
+    background-color: #1a1a2e;
+    background-image: url('/sinartelekomdashboardsystem/assets/images/bg_login.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Dark Overlay */
+.login-page::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 0;
+}
+
+@keyframes moveBackground {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(50px, 50px);
+    }
+}
+
+/* Floating Particles - Reduced Opacity */
+.login-page::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle, rgba(139, 21, 56, 0.1) 2px, transparent 2px),
+        radial-gradient(circle, rgba(200, 75, 49, 0.1) 1px, transparent 1px);
+    background-size: 100px 100px, 80px 80px;
+    background-position: 0 0, 40px 40px;
+    animation: floatParticles 15s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes floatParticles {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+/* Left Side - Illustration */
+.login-illustration {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+    position: relative;
+    z-index: 1;
+}
+
+.illustration-content {
+    max-width: 600px;
+    text-align: center;
+}
+
+.illustration-content h2 {
+    font-size: 42px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.illustration-content p {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    margin-bottom: 40px;
+}
+
+/* Digital Flow Animation */
+.digital-flow {
+    width: 100%;
+    max-width: 500px;
+    height: 400px;
+    position: relative;
+    margin-top: 40px;
+}
+
+.flow-circle {
+    position: absolute;
+    border: 2px solid rgba(139, 21, 56, 0.5);
+    border-radius: 50%;
+    animation: pulse 3s ease-in-out infinite;
+}
+
+.flow-circle:nth-child(1) {
+    width: 300px;
+    height: 300px;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0s;
+}
+
+.flow-circle:nth-child(2) {
+    width: 200px;
+    height: 200px;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0.5s;
+    border-color: rgba(200, 75, 49, 0.5);
+}
+
+.flow-circle:nth-child(3) {
+    width: 100px;
+    height: 100px;
+    top: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 1s;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.1);
+        opacity: 0.7;
+    }
+}
+
+.flow-line {
+    position: absolute;
+    width: 2px;
+    height: 80px;
+    background: linear-gradient(to bottom, rgba(139, 21, 56, 0.8), transparent);
+    animation: flowDown 2s ease-in-out infinite;
+}
+
+.flow-line:nth-child(4) {
+    top: 50px;
+    left: 30%;
+    animation-delay: 0s;
+}
+
+.flow-line:nth-child(5) {
+    top: 50px;
+    left: 70%;
+    animation-delay: 0.5s;
+}
+
+.flow-line:nth-child(6) {
+    top: 150px;
+    left: 50%;
+    animation-delay: 1s;
+}
+
+@keyframes flowDown {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(60px);
+        opacity: 0;
+    }
+}
+
+/* Right Side - Login Form */
+.login-container {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+    margin-right: 80px;
+}
+
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    padding: 50px 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    animation: slideInRight 0.6s ease-out;
+    width: 100%;
+    max-width: 420px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.login-title {
+    text-align: center;
+    color: #8B1538;
+    font-size: 24px;
+    margin-bottom: 40px;
+    font-weight: 600;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #555;
+    font-size: 13px;
+}
+
+.form-group input {
+    padding: 12px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #8B1538;
+    box-shadow: 0 0 0 3px rgba(139, 21, 56, 0.1);
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 13px;
+    text-align: center;
+    min-height: 20px;
+    font-weight: 500;
+}
+
+.login-button {
+    padding: 12px;
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(139, 21, 56, 0.4);
+}
+
+.login-button:active {
+    transform: translateY(0);
+}
+
+/* Dashboard Page Styles */
+.dashboard-page,
+.submenu-page {
+    background: #f8f9fa;
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Modern Futuristic Polygon Pattern Background */
+.dashboard-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(135deg, transparent 0%, transparent 48%, rgba(139, 21, 56, 0.03) 48%, rgba(139, 21, 56, 0.03) 52%, transparent 52%, transparent 100%),
+        linear-gradient(45deg, transparent 0%, transparent 48%, rgba(200, 75, 49, 0.03) 48%, rgba(200, 75, 49, 0.03) 52%, transparent 52%, transparent 100%),
+        linear-gradient(90deg, rgba(139, 21, 56, 0.02) 1px, transparent 1px),
+        linear-gradient(rgba(200, 75, 49, 0.02) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 40px 40px, 40px 40px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Animated Geometric Shapes */
+.dashboard-page::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(139, 21, 56, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(200, 75, 49, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(139, 21, 56, 0.03) 0%, transparent 60%);
+    z-index: 0;
+    pointer-events: none;
+    animation: geometricFloat 20s ease-in-out infinite;
+}
+
+@keyframes geometricFloat {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-20px) scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(139, 21, 56, 0.3);
+}
+
+.dashboard-header h1 {
+    color: white;
+    font-size: 22px;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-buttons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    position: relative;
+}
+
+/* Account Dropdown Styles */
+.account-dropdown {
+    position: relative;
+}
+
+.account-button {
+    padding: 9px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.account-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: white;
+    transform: translateY(-2px);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    min-width: 220px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.account-dropdown:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 20px;
+    width: 12px;
+    height: 12px;
+    background: white;
+    transform: rotate(45deg);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    color: #2c3e50;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    color: white;
+}
+
+.dropdown-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+
+.logout-button,
+.back-button,
+.admin-button {
+    padding: 9px 20px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.back-button {
+    background: #3498db;
+}
+
+.admin-button {
+    background: #C84B31;
+    margin-right: 10px;
+}
+
+.logout-button:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+}
+
+.back-button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.admin-button:hover {
+    background: #D35E3F;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(200, 75, 49, 0.4);
+}
+
+/* Hexagon Menu Styles */
+.dashboard-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 80px);
+    padding: 40px 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.hexagon-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    max-width: 1200px;
+}
+
+.hexagon-menu {
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.hexagon-menu:hover {
+    transform: scale(1.1);
+}
+
+.hexagon {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0;
+}
+
+.hexagon-inner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 10px 40px rgba(139, 21, 56, 0.15),
+        0 0 0 1px rgba(139, 21, 56, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(139, 21, 56, 0.1);
+}
+
+.hexagon-menu:hover .hexagon-inner {
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    box-shadow: 
+        0 20px 60px rgba(139, 21, 56, 0.35),
+        0 0 0 1px rgba(139, 21, 56, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px) scale(1.05);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.hexagon-content {
+    text-align: center;
+    padding: 20px;
+}
+
+.hexagon-content span {
+    font-size: 16px;
+    font-weight: 600;
+    color: #8B1538;
+    transition: color 0.3s ease;
+}
+
+.hexagon-menu:hover .hexagon-content span {
+    color: white;
+}
+
+/* Rounded Menu Styles */
+.submenu-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 80px);
+    padding: 40px 20px;
+}
+
+.rounded-menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 600px;
+    width: 100%;
+}
+
+.rounded-menu-item {
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.rounded-menu-item:hover {
+    transform: translateX(10px);
+}
+
+.rounded-box {
+    background: white;
+    border-radius: 20px;
+    padding: 30px 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.rounded-menu-item:hover .rounded-box {
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.rounded-box h2 {
+    color: #8B1538;
+    font-size: 21px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.rounded-box p {
+    color: #666;
+    font-size: 13px;
+    transition: color 0.3s ease;
+}
+
+.rounded-menu-item:hover .rounded-box h2,
+.rounded-menu-item:hover .rounded-box p {
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .login-page {
+        flex-direction: column;
+    }
+    
+    .login-illustration {
+        padding: 40px 20px;
+        min-height: 40vh;
+    }
+    
+    .illustration-content h2 {
+        font-size: 36px;
+    }
+    
+    .illustration-content p {
+        font-size: 16px;
+    }
+    
+    .digital-flow {
+        height: 300px;
+    }
+    
+    .login-container {
+        max-width: 100%;
+        padding: 40px 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 20px;
+    }
+    
+    .hexagon-container {
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .hexagon {
+        width: 180px;
+        height: 180px;
+    }
+    
+    .hexagon-content span {
+        font-size: 16px;
+    }
+    
+    .rounded-menu-container {
+        padding: 0 10px;
+    }
+    
+    .rounded-box {
+        padding: 25px 30px;
+    }
+    
+    .rounded-box h2 {
+        font-size: 20px;
+    }
+    
+    .login-illustration {
+        padding: 30px 20px;
+        min-height: 30vh;
+    }
+    
+    .illustration-content h2 {
+        font-size: 28px;
+    }
+    
+    .illustration-content p {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    .digital-flow {
+        height: 200px;
+        margin-top: 20px;
+    }
+    
+    .flow-circle:nth-child(1) {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .flow-circle:nth-child(2) {
+        width: 140px;
+        height: 140px;
+    }
+    
+    .flow-circle:nth-child(3) {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .login-box {
+        padding: 40px 30px;
+    }
+    
+    .login-title {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hexagon {
+        width: 160px;
+        height: 160px;
+    }
+    
+    .hexagon-content span {
+        font-size: 14px;
+    }
+    
+    .rounded-box h2 {
+        font-size: 18px;
+    }
+    
+    .illustration-content h2 {
+        font-size: 24px;
+    }
+    
+    .illustration-content p {
+        font-size: 13px;
+    }
+    
+    .login-box {
+        padding: 30px 20px;
+    }
+    
+    .login-title {
+        font-size: 20px;
+        margin-bottom: 30px;
+    }
+}

@@ -1,0 +1,250 @@
+<!-- Form Input Penjualan dengan Multiple Products -->
+<div class="form-container" style="max-width: 1000px;">
+    <h2>💰 Form Input Penjualan</h2>
+    <p style="color: #7f8c8d; margin-bottom: 20px;">Input penjualan untuk 1 reseller dengan multiple produk</p>
+    
+    <form method="POST" id="penjualanForm">
+        <input type="hidden" name="action" value="input_penjualan">
+        
+        <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" name="tanggal_penjualan" value="<?php echo date('Y-m-d'); ?>" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Reseller</label>
+            <select name="reseller_id" required>
+                <option value="">-- Pilih Reseller --</option>
+                <?php 
+                if ($resellers) {
+                    $resellers->data_seek(0);
+                    while ($r = $resellers->fetch_assoc()): 
+                ?>
+                    <option value="<?php echo $r['reseller_id']; ?>">
+                        <?php echo htmlspecialchars($r['nama_reseller']); ?>
+                    </option>
+                <?php endwhile; } ?>
+            </select>
+        </div>
+        
+        <hr style="margin: 30px 0; border: none; border-top: 2px solid #e9ecef;">
+        
+        <h3 style="color: #2c3e50; margin-bottom: 20px;">📦 Daftar Produk</h3>
+        
+        <div id="productContainer">
+            <!-- Product Row 1 (Default) -->
+            <div class="product-row" data-row="1">
+                <div class="product-row-header">
+                    <h4>Produk #1</h4>
+                    <button type="button" class="btn-remove" onclick="removeProduct(this)" style="display: none;">🗑️ Hapus</button>
+                </div>
+                <div class="product-grid">
+                    <div class="form-group" style="margin: 0;">
+                        <label>Produk</label>
+                        <select name="produk_id[]" class="produk-select" onchange="calculateSubtotal(this)" required>
+                            <option value="">-- Pilih Produk --</option>
+                            <?php 
+                            if ($products) {
+                                $products->data_seek(0);
+                                while ($p = $products->fetch_assoc()): 
+                            ?>
+                                <option value="<?php echo $p['produk_id']; ?>" 
+                                        data-harga="<?php echo $p['harga']; ?>" 
+                                        data-stok="<?php echo $p['stok']; ?>">
+                                    <?php echo htmlspecialchars($p['nama_produk']); ?> - Rp <?php echo number_format($p['harga'], 0, ',', '.'); ?> (Stok: <?php echo $p['stok']; ?>)
+                                </option>
+                            <?php endwhile; } ?>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Quantity</label>
+                        <input type="number" name="qty[]" class="qty-input" min="1" onchange="calculateSubtotal(this)" required>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>Subtotal</label>
+                        <input type="text" class="subtotal-display" readonly style="background: #f8f9fa; font-weight: 600; color: #27ae60;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button type="button" class="btn-add-product" onclick="addProduct()">
+            ➕ Tambah Produk
+        </button>
+        
+        <div class="total-display">
+            <h3>TOTAL KESELURUHAN</h3>
+            <div class="amount" id="grandTotal">Rp 0</div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">💰 Proses Penjualan</button>
+            <a href="?page=dashboard" class="btn-cancel">❌ Batal</a>
+        </div>
+    </form>
+</div>
+
+<script>
+let productCount = 1;
+
+// Product prices data
+const productData = {
+    <?php 
+    if ($products) {
+        $products->data_seek(0);
+        while ($p = $products->fetch_assoc()): 
+    ?>
+        <?php echo $p['produk_id']; ?>: {
+            harga: <?php echo $p['harga']; ?>,
+            stok: <?php echo $p['stok']; ?>,
+            nama: '<?php echo addslashes($p['nama_produk']); ?>'
+        },
+    <?php endwhile; } ?>
+};
+
+function addProduct() {
+    productCount++;
+    
+    const container = document.getElementById('productContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'product-row';
+    newRow.setAttribute('data-row', productCount);
+    
+    newRow.innerHTML = `
+        <div class="product-row-header">
+            <h4>Produk #${productCount}</h4>
+            <button type="button" class="btn-remove" onclick="removeProduct(this)">🗑️ Hapus</button>
+        </div>
+        <div class="product-grid">
+            <div class="form-group" style="margin: 0;">
+                <label>Produk</label>
+                <select name="produk_id[]" class="produk-select" onchange="calculateSubtotal(this)" required>
+                    <option value="">-- Pilih Produk --</option>
+                    <?php 
+                    if ($products) {
+                        $products->data_seek(0);
+                        while ($p = $products->fetch_assoc()): 
+                    ?>
+                        <option value="<?php echo $p['produk_id']; ?>" 
+                                data-harga="<?php echo $p['harga']; ?>" 
+                                data-stok="<?php echo $p['stok']; ?>">
+                            <?php echo htmlspecialchars($p['nama_produk']); ?> - Rp <?php echo number_format($p['harga'], 0, ',', '.'); ?> (Stok: <?php echo $p['stok']; ?>)
+                        </option>
+                    <?php endwhile; } ?>
+                </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+                <label>Quantity</label>
+                <input type="number" name="qty[]" class="qty-input" min="1" onchange="calculateSubtotal(this)" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+                <label>Subtotal</label>
+                <input type="text" class="subtotal-display" readonly style="background: #f8f9fa; font-weight: 600; color: #27ae60;">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(newRow);
+    updateRemoveButtons();
+}
+
+function removeProduct(btn) {
+    const row = btn.closest('.product-row');
+    row.remove();
+    
+    // Renumber remaining products
+    const rows = document.querySelectorAll('.product-row');
+    rows.forEach((row, index) => {
+        row.querySelector('h4').textContent = `Produk #${index + 1}`;
+        row.setAttribute('data-row', index + 1);
+    });
+    
+    productCount = rows.length;
+    updateRemoveButtons();
+    calculateGrandTotal();
+}
+
+function updateRemoveButtons() {
+    const rows = document.querySelectorAll('.product-row');
+    rows.forEach((row, index) => {
+        const removeBtn = row.querySelector('.btn-remove');
+        if (rows.length === 1) {
+            removeBtn.style.display = 'none';
+        } else {
+            removeBtn.style.display = 'inline-block';
+        }
+    });
+}
+
+function calculateSubtotal(element) {
+    const row = element.closest('.product-row');
+    const produkSelect = row.querySelector('.produk-select');
+    const qtyInput = row.querySelector('.qty-input');
+    const subtotalDisplay = row.querySelector('.subtotal-display');
+    
+    const produkId = produkSelect.value;
+    const qty = parseInt(qtyInput.value) || 0;
+    
+    if (produkId && qty > 0) {
+        const selectedOption = produkSelect.options[produkSelect.selectedIndex];
+        const harga = parseInt(selectedOption.getAttribute('data-harga'));
+        const stok = parseInt(selectedOption.getAttribute('data-stok'));
+        
+        if (qty > stok) {
+            alert(`Stok tidak mencukupi! Stok tersedia: ${stok}`);
+            qtyInput.value = stok;
+            return;
+        }
+        
+        const subtotal = harga * qty;
+        subtotalDisplay.value = 'Rp ' + subtotal.toLocaleString('id-ID');
+    } else {
+        subtotalDisplay.value = '';
+    }
+    
+    calculateGrandTotal();
+}
+
+function calculateGrandTotal() {
+    let total = 0;
+    
+    document.querySelectorAll('.product-row').forEach(row => {
+        const produkSelect = row.querySelector('.produk-select');
+        const qtyInput = row.querySelector('.qty-input');
+        
+        const produkId = produkSelect.value;
+        const qty = parseInt(qtyInput.value) || 0;
+        
+        if (produkId && qty > 0) {
+            const selectedOption = produkSelect.options[produkSelect.selectedIndex];
+            const harga = parseInt(selectedOption.getAttribute('data-harga'));
+            total += harga * qty;
+        }
+    });
+    
+    document.getElementById('grandTotal').textContent = 'Rp ' + total.toLocaleString('id-ID');
+}
+
+// Form validation before submit
+document.getElementById('penjualanForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.product-row');
+    let hasProduct = false;
+    
+    rows.forEach(row => {
+        const produkId = row.querySelector('.produk-select').value;
+        const qty = row.querySelector('.qty-input').value;
+        
+        if (produkId && qty) {
+            hasProduct = true;
+        }
+    });
+    
+    if (!hasProduct) {
+        e.preventDefault();
+        alert('Minimal harus ada 1 produk yang diisi!');
+        return false;
+    }
+    
+    return confirm('Proses penjualan ini?');
+});
+</script>

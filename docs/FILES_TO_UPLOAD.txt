@@ -1,0 +1,168 @@
+================================================================================
+📦 DAFTAR FILE UNTUK UPLOAD KE HOSTING
+================================================================================
+
+✅ FILE WAJIB UPLOAD:
+================================================================================
+
+📁 ROOT FOLDER (public_html/)
+------------------------------------------------------------
+✅ config.php                    ⚠️ EDIT DULU! (database credentials)
+✅ .htaccess                     ⚠️ EDIT DULU! (disable error display)
+✅ login.php
+✅ dashboard.php
+✅ logout.php
+✅ inventory.php
+✅ inventory_stock.php
+✅ inventory_stock_keluar.php
+✅ inventory_laporan.php
+✅ inventory_laporan_enhanced.php
+✅ laporan_sidebar.php
+✅ laporan_filter.php
+✅ laporan_stats.php
+✅ laporan_charts.php
+✅ laporan_table.php
+✅ laporan_info.php
+✅ export_laporan_excel.php
+✅ export_laporan_pdf.php
+✅ styles.css
+✅ laporan_styles.css
+✅ script.js
+✅ database.sql                  (untuk import ke hosting)
+
+📁 FOLDER admin/
+------------------------------------------------------------
+✅ admin/index.php
+✅ admin/users.php
+✅ admin/produk.php
+✅ admin/kategori.php
+✅ admin/cabang.php
+✅ admin/penjualan.php
+✅ admin/inventory.php
+✅ admin/stock.php
+✅ admin/reseller.php
+✅ admin/grafik.php
+✅ admin/admin-styles.css
+
+
+================================================================================
+❌ FILE JANGAN UPLOAD (Development/Testing Only):
+================================================================================
+
+❌ Semua file debug_*.php
+❌ Semua file check_*.php
+❌ Semua file *_test.php
+❌ Semua file *_backup.php
+❌ Semua file *.md (dokumentasi)
+❌ Semua file *.sql (kecuali database.sql)
+❌ index.html (jika sudah ada dashboard.php)
+❌ performance-cluster.*
+
+
+================================================================================
+⚙️ LANGKAH UPLOAD:
+================================================================================
+
+1. PERSIAPAN DATABASE
+   ☐ Login ke cPanel/phpMyAdmin
+   ☐ Buat database baru
+   ☐ Catat: nama database, username, password
+   ☐ Import file database.sql
+
+2. EDIT FILE PENTING
+   ☐ Edit config.php:
+      - DB_HOST (biasanya 'localhost')
+      - DB_USER (username database hosting)
+      - DB_PASS (password database hosting)
+      - DB_NAME (nama database hosting)
+   
+   ☐ Edit .htaccess:
+      - Comment/hapus baris error display
+
+3. UPLOAD FILE
+   ☐ Via FTP/FileZilla atau cPanel File Manager
+   ☐ Upload ke folder public_html/
+   ☐ Pastikan struktur folder sama
+
+4. SET PERMISSION
+   ☐ Folder: 755
+   ☐ File PHP: 644
+   ☐ config.php: 600
+
+5. TESTING
+   ☐ Akses: https://namadomain.com
+   ☐ Login dengan: admin / password
+   ☐ Test semua fitur
+
+6. KEAMANAN
+   ☐ Ganti password default
+   ☐ Aktifkan SSL/HTTPS
+   ☐ Setup backup rutin
+
+
+================================================================================
+📝 CATATAN PENTING:
+================================================================================
+
+⚠️  WAJIB EDIT SEBELUM UPLOAD:
+    1. config.php (kredensial database)
+    2. .htaccess (disable error display)
+
+⚠️  JANGAN LUPA:
+    1. Import database.sql ke hosting
+    2. Ganti password default setelah upload
+    3. Test semua fitur sebelum go-live
+
+⚠️  KEAMANAN:
+    1. Jangan upload file debug/test
+    2. Aktifkan HTTPS/SSL
+    3. Backup database & file secara rutin
+
+
+================================================================================
+✅ CHECKLIST FINAL:
+================================================================================
+
+☐ Database sudah dibuat & di-import
+☐ config.php sudah diedit
+☐ .htaccess sudah diedit
+☐ Semua file sudah di-upload
+☐ Permission sudah di-set
+☐ Website bisa diakses
+☐ Login berhasil
+☐ Semua fitur berfungsi
+☐ Password default sudah diganti
+☐ SSL/HTTPS sudah aktif
+
+
+================================================================================
+🆘 TROUBLESHOOTING:
+================================================================================
+
+Error "Connection failed"
+→ Cek kredensial database di config.php
+
+Error "500 Internal Server Error"
+→ Cek permission file & syntax .htaccess
+
+Halaman blank/putih
+→ Cek PHP version (minimal 7.4) & error log
+
+CSS tidak muncul
+→ Clear browser cache & cek path file
+
+
+================================================================================
+📞 SUPPORT:
+================================================================================
+
+Jika ada masalah:
+1. Cek error log di cPanel
+2. Pastikan PHP version minimal 7.4
+3. Hubungi support hosting
+
+
+================================================================================
+Dibuat: 2024
+Untuk: Sinar Telkom Dashboard System
+================================================================================

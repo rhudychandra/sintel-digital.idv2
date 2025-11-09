@@ -1,0 +1,29 @@
+# Enable PHP error reporting for development
+# Comment out for production
+php_flag display_errors on
+php_value error_reporting E_ALL
+
+# Set default file
+DirectoryIndex login.php index.php index.html
+
+# Redirect index.html to login.php
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^index\.html$ login.php [L,R=301]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(config\.php|database\.sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

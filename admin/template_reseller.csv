@@ -1,0 +1,4 @@
+kode_reseller,nama_reseller,nama_perusahaan,kategori,alamat,kota,provinsi,telepon,email,contact_person,status
+RSL001,Toko Elektronik Jaya,PT Elektronik Jaya Abadi,Sales Force,"Jl. Mangga Dua No. 10",Jakarta,DKI Jakarta,021-11111111,jaya@email.com,John Doe,active
+RSL002,Mega Telkom Store,CV Mega Telkom,Manager,"Jl. Dago No. 20",Bandung,Jawa Barat,022-22222222,mega@email.com,Jane Smith,active
+RSL003,Surabaya Tech,PT Surabaya Technology,Supervisor,"Jl. Pemuda No. 30",Surabaya,Jawa Timur,031-33333333,tech@email.com,Robert Brown,active
