@@ -26,6 +26,17 @@ uploads/
 assets/uploads/
 assets/tmp/
 
+# Development and scripts (not required for runtime)
+_development/
+scripts/
+
+# PowerShell scripts
+*.ps1
+
+# Markdown docs (keep top-level README only)
+*.md
+!README.md
+
 # --- Ensure the following are tracked (do NOT ignore) ---
 # In case broader rules are added in the future, explicitly un-ignore these paths
 !assets/images/evidence/
@@ -36,6 +47,3 @@ assets/tmp/
 !test_connection.php
 !test_db.php
 
-# Development backups/debug
-_development/backup/
-_development/debug/
