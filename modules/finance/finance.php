@@ -31,6 +31,13 @@ $page_title = "Finance - Sinar Telkom Dashboard System";
     </header>
 
     <main class="submenu-main">
+        <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-error" style="max-width:800px;margin:20px auto 30px;padding:15px 20px;background:#fee;border-left:4px solid #c33;border-radius:8px;color:#c33;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-exclamation-circle" style="font-size:20px;"></i>
+            <span><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></span>
+        </div>
+        <?php endif; ?>
+        
         <div class="rounded-menu-container">
             <a href="setoran_harian_tap" class="rounded-menu-item">
                 <div class="rounded-box">

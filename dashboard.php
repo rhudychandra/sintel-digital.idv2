@@ -49,6 +49,13 @@ $user = getCurrentUser();
     </header>
     
     <main class="dashboard-main">
+        <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-error" style="max-width:800px;margin:20px auto;padding:15px 20px;background:#fee;border-left:4px solid #c33;border-radius:8px;color:#c33;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+            <i class="fas fa-exclamation-circle" style="margin-right:8px;"></i>
+            <?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?>
+        </div>
+        <?php endif; ?>
+        
         <div class="hexagon-container">
             <a href="<?php echo BASE_PATH; ?>/modules/performance/performance-cluster" class="hexagon-menu">
                 <div class="hexagon">

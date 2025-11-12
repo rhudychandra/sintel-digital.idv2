@@ -4,6 +4,14 @@ require_once __DIR__ . '/finance_global_metrics.php';
 requireLogin();
 
 $user = getCurrentUser();
+
+// Restrict access: Only administrator and manager can view this page
+if (!in_array($user['role'], ['administrator', 'manager'])) {
+    $_SESSION['error_message'] = 'Akses Ditolak! Halaman ini hanya bisa diakses oleh Manager & IT Support Cluster.';
+    header('Location: ' . BASE_PATH . '/modules/finance/finance.php');
+    exit();
+}
+
 $page_title = 'Laporan Setoran Global - Sinar Telkom Dashboard System';
 
 // Period selection (default current month/year) - for future filtering
