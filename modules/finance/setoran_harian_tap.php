@@ -103,11 +103,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evidence'])) {
 
     // Basic validation
     if ($ev_tanggal && $ev_cabang && $ev_atas_nama && $ev_bank && $ev_bank_pengirim && $ev_nominal > 0 && isset($_FILES['ev_evidence'])) {
-        $uploadDirFs = __DIR__ . '/../../assets/images/evidence';
-        $uploadDirUrl = BASE_PATH . '/assets/images/evidence';
-        if (!is_dir($uploadDirFs)) {
-            @mkdir($uploadDirFs, 0775, true);
+        // Use relative path from this file - portable across different installations
+        // Works for: local dev, network access, hosting, different folder names
+        $uploadDirFs = realpath(__DIR__ . '/../../assets/images/evidence');
+        if (!$uploadDirFs || !is_dir($uploadDirFs)) {
+            // Folder doesn't exist, create using absolute path construction
+            $uploadDirFs = dirname(dirname(__DIR__)) . '/assets/images/evidence';
+            if (!is_dir($uploadDirFs)) {
+                @mkdir($uploadDirFs, 0777, true);
+                @chmod($uploadDirFs, 0777); // Ensure writable from network
+            }
         }
+        $uploadDirUrl = BASE_PATH . '/assets/images/evidence';
 
         $file = $_FILES['ev_evidence'];
         if ($file['error'] === UPLOAD_ERR_OK) {
@@ -132,6 +139,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evidence'])) {
                     $targetPath = rtrim($uploadDirFs, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $baseName;
 
                     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                        // Set file permission for network access (Mac/Linux/Windows network)
+                        @chmod($targetPath, 0644);
+                        
                         $relativeUrl = rtrim($uploadDirUrl, '/') . '/' . $baseName;
 
                         // Insert record (supports new columns if available)
@@ -165,12 +175,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evidence'])) {
                             }
                         }
                     } else {
-                        $error_message = 'Gagal mengunggah file evidence.';
+                        // Enhanced error for network debugging
+                        $error_message = 'Gagal mengunggah file evidence. ';
+                        $error_message .= 'Debug: Dir=' . $uploadDirFs . ', ';
+                        $error_message .= 'Exists=' . (is_dir($uploadDirFs) ? 'yes' : 'no') . ', ';
+                        $error_message .= 'Writable=' . (is_writable($uploadDirFs) ? 'yes' : 'no') . ', ';
+                        $error_message .= 'TmpFile=' . (file_exists($file['tmp_name']) ? 'exists' : 'missing') . '. ';
+                        $error_message .= 'Pastikan folder evidence memiliki permission 0777 untuk akses network.';
                     }
                 }
             }
         } else {
-            $error_message = 'Terjadi kesalahan saat upload file (kode: ' . (int)$file['error'] . ').';
+            // Map upload error codes
+            $errors = [
+                UPLOAD_ERR_INI_SIZE => 'File melebihi upload_max_filesize',
+                UPLOAD_ERR_FORM_SIZE => 'File terlalu besar',
+                UPLOAD_ERR_PARTIAL => 'Upload tidak lengkap',
+                UPLOAD_ERR_NO_FILE => 'Tidak ada file',
+                UPLOAD_ERR_NO_TMP_DIR => 'Folder temp tidak ada',
+                UPLOAD_ERR_CANT_WRITE => 'Gagal tulis ke disk',
+                UPLOAD_ERR_EXTENSION => 'Extension PHP error'
+            ];
+            $code = (int)$file['error'];
+            $error_message = 'Upload error (kode ' . $code . '): ' . ($errors[$code] ?? 'Unknown') . '.';
         }
     } else {
         $error_message = 'Lengkapi semua field evidence setoran (termasuk nominal dan bank pengirim).';
