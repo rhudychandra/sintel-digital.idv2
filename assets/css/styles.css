@@ -345,7 +345,8 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(248, 249, 250, 0.30);
+    /* Remove light wash overlay to eliminate pink tint; keep layer for potential future effects */
+    background: rgba(248, 249, 250, 0); /* fully transparent */
     z-index: 1;
     pointer-events: none;
 }
@@ -382,7 +383,8 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(248, 249, 250, 0.30);
+    /* Remove light wash overlay to eliminate pink tint; keep layer for potential future effects */
+    background: rgba(248, 249, 250, 0); /* fully transparent */
     z-index: 1;
     pointer-events: none;
 }
