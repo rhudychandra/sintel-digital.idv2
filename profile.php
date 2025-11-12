@@ -57,16 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Get user full information - FIXED: removed c.phone
+// Get user full information
 $stmt = $conn->prepare("
     SELECT 
         u.*,
         c.nama_cabang,
         c.alamat as cabang_alamat,
-        m.full_name as manager_name
+        c.manager_name
     FROM users u
     LEFT JOIN cabang c ON u.cabang_id = c.cabang_id
-    LEFT JOIN users m ON c.cabang_id = m.cabang_id AND m.role = 'manager'
     WHERE u.user_id = ?
 ");
 $stmt->bind_param("i", $user['user_id']);
