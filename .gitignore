@@ -44,6 +44,8 @@ scripts/
 !modules/finance/**
 !modules/inventory/partials/**
 !test_access.php
-!test_connection.php
 !test_db.php
+
+# Never track sensitive connection test file
+test_connection.php
 
