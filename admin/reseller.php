@@ -174,7 +174,7 @@ $conn->close();
             <div class="admin-content">
                 <?php if ($message): ?>
                 <div class="alert alert-success" style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <?php echo htmlspecialchars($message); ?>
+                    <?php echo $message; ?>
                 </div>
                 <?php endif; ?>
                 

@@ -1,4 +1,28 @@
 kode_produk,nama_produk,kategori,harga,deskripsi
-PRD-001,Internet 30 Mbps,Internet,300000,Paket internet rumah 30 Mbps unlimited
-PRD-002,TV Cable Premium Plus,TV Cable,280000,Paket TV Cable 120 channel + HBO & Sports
-PRD-003,Paket Triple Play 30 Mbps,Paket Bundling,700000,Internet 30 Mbps + TV Cable + Telepon
+VF-Lite-Inet -001,"VF Internet Lite 1,5GB 3Hari",Voucher Internet Lite,8002,"VF Internet Lite 1,5GB 3Hari"
+VF-Lite-Inet -002,VF Internet Lite 2GB 3Hari,Voucher Internet Lite,10120,VF Internet Lite 2GB 3Hari
+VF-Lite-Inet -003,VF Internet Lite 3GB 3Hari,Voucher Internet Lite,11300,VF Internet Lite 3GB 3Hari
+VF-Lite-Inet -004,VF Internet Lite 1GB 1Hari,Voucher Internet Lite,5500,VF Internet Lite 1GB 1Hari
+VF-Lite-Inet -005,VF Internet Lite 2GB 5Hari,Voucher Internet Lite,11400,VF Internet Lite 2GB 5Hari
+VF-Lite-Inet -006,"VF Internet Lite 2,5GB 5Hari",Voucher Internet Lite,10700,"VF Internet Lite 2,5GB 5Hari"
+VF-Lite-Inet -007,VF Internet Lite 3GB 5Hari,Voucher Internet Lite,12520,VF Internet Lite 3GB 5Hari
+VF-Lite-Inet -008,VF Internet Lite 5GB 5Hari,Voucher Internet Lite,21300,VF Internet Lite 5GB 5Hari
+VF-Lite-Inet -009,VF Internet Lite 7GB 7Hari,Voucher Internet Lite,25500,VF Internet Lite 7GB 7Hari
+VF-Lite-Inet -010,VF Internet ByU ByU 1GB 1Hari,Voucher Internet ByU,3500,VF Internet ByU ByU 1GB 1Hari
+VF-Lite-Inet -011,VF Internet ByU ByU 2GB 1Hari,Voucher Internet ByU,6000,VF Internet ByU ByU 2GB 1Hari
+VF-ByU-Inet -001,VF Internet ByU ByU 3GB 3Hari,Voucher Internet ByU,8500,VF Internet ByU ByU 3GB 3Hari
+VF-ByU-Inet -002,VF Internet ByU ByU 4GB 7Hari,Voucher Internet ByU,10500,VF Internet ByU ByU 4GB 7Hari
+VF-ByU-Inet -003,VF Internet ByU ByU 9GB 30Hari,Voucher Internet ByU,25500,VF Internet ByU ByU 9GB 30Hari
+VF-ByU-Inet -004,VF Internet ByU ByU 7GB 30Hari,Voucher Internet ByU,15500,VF Internet ByU ByU 7GB 30Hari
+SA-PRL-3GB,Preload 3GB 30 Hari,Perdana Internet Lite,28000,Preload 3GB 30 Hari
+SA-INET-3GB,Perdana Internet SA 3GB,Perdana Internet Lite,28000,Perdana Internet SA 3GB
+SA-BYU-3GB,SA ByU 3GB 30D,Perdana Internet ByU,28000,SA ByU 3GB 30D
+SA-BYU-3GB-A,SA ByU 3GB 30D (Alladin),Perdana Internet ByU,15000,SA ByU 3GB 30D (Alladin)
+VF-Lite-Inet -010,VF Internet Lite HotPromo 9GB 30D,Voucher Internet Lite,32000,VF Internet Lite HotPromo 9GB 30D
+VF-Lite-Inet -011,VF Internet Lite HotPromo 18GB 30D,Voucher Internet Lite,45000,VF Internet Lite HotPromo 18GB 30D
+Link,Saldo LinkAja,LinkAja,1,Saldo LinkAja
+Finpay,Saldo Finpay,Finpay,1,Saldo Finpay
+RED-1,Perdana Segel Red 0K,Perdana Segel Red 0K,10000,Perdana Segel Red 0K
+BYU-1,Perdana Segel ByU 0K,Perdana Segel ByU 0K,10000,Perdana Segel ByU 0K
+VF-Lite,Voucher Fisik Segel Lite,Voucher Segel Lite,500,Voucher Fisik Segel Lite
+VF-ByU,Voucher Fisik Segel ByU,Voucher Segel ByU,500,Voucher Fisik Segel ByU

@@ -1,6 +1,7 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Production-safe error settings (remove verbose display)
+// error_reporting(E_ALL); // Uncomment for debugging locally
+// ini_set('display_errors', 1);
 
 require_once '../config/config.php';
 requireLogin();
@@ -172,10 +173,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
             
             // Prepare result message
             $message = "<strong>Upload Selesai!</strong><br>";
-            $message .= "✅ Berhasil: $success_count reseller<br>";
+            $message .= "✅ Berhasil: " . intval($success_count) . " reseller<br>";
             
             if ($error_count > 0) {
-                $message .= "❌ Gagal: $error_count reseller<br><br>";
+                $message .= "❌ Gagal: " . intval($error_count) . " reseller<br><br>";
                 $message .= "<strong>Detail Error:</strong><br>";
                 $message .= "<ul style='margin: 10px 0; padding-left: 20px;'>";
                 foreach (array_slice($errors, 0, 10) as $error) {

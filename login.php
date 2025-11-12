@@ -1,9 +1,13 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once 'config/config.php';
 
 // If already logged in, redirect to dashboard
 if (isLoggedIn()) {
-    header('Location: dashboard.php');
+    header('Location: ' . BASE_PATH . '/dashboard');
     exit();
 }
 
@@ -45,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update_stmt->close();
                 
                 // Redirect to dashboard
-                header('Location: dashboard.php');
+                header('Location: ' . BASE_PATH . '/dashboard');
                 exit();
             } else {
                 $error = 'Username atau password salah!';
@@ -68,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="<?php echo BASE_PATH; ?>/assets/css/styles.css">
 </head>
 <body class="login-page">
     <!-- Left Side - Illustration -->
@@ -94,11 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-box" style="position: relative; padding-top: 120px;">
             <!-- Logo Overlay - positioned absolutely above the form -->
             <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); z-index: 10;">
-                <img src="assets/images/logo_icon.png" alt="Logo" style="width: 200px; height: 200px; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.2));">
+                <img src="<?php echo BASE_PATH; ?>/assets/images/logo_icon.png" alt="Logo" style="width: 200px; height: 200px; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.2));">
             </div>
             
             <h1 class="login-title" style="margin-top: 0;">Sinar Telekom Dashboard System</h1>
-            <form method="POST" action="login.php" class="login-form">
+            <form method="POST" action="<?php echo BASE_PATH; ?>/login" class="login-form">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" required placeholder="Masukkan username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">

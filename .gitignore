@@ -1,0 +1,41 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.idea/
+.history/
+.vscode/
+
+# Node/Composer (future-proof)
+node_modules/
+vendor/
+
+# Env and secrets
+.env
+config/config.php
+
+# Logs and temp
+*.log
+tmp/
+temp/
+.phpunit.result.cache
+
+# Uploads/cache (adjust if you want to version these)
+uploads/
+assets/uploads/
+assets/tmp/
+
+# --- Ensure the following are tracked (do NOT ignore) ---
+# In case broader rules are added in the future, explicitly un-ignore these paths
+!assets/images/evidence/
+!database/migrations/**
+!modules/finance/**
+!modules/inventory/partials/**
+!test_access.php
+!test_connection.php
+!test_db.php
+
+# Development backups/debug
+_development/backup/
+_development/debug/

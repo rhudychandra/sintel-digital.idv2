@@ -1,8 +1,21 @@
 <!-- Sales Table -->
-<div class="table-container">
+<div class="table-container" id="detail-penjualan">
     <div class="table-header">
         <h2>📋 Detail Penjualan</h2>
         <div class="export-buttons">
+            <div class="print-controls" style="display: inline-flex; align-items: center; gap: 10px; margin-right: 10px; flex-wrap: wrap;">
+                <label style="font-size:12px; color:#555; display:flex; align-items:center; gap:6px;">
+                    Orientasi
+                    <select id="print-orientation" style="padding:4px 6px; border:1px solid #ddd; border-radius:6px;">
+                        <option value="landscape" selected>Landscape</option>
+                        <option value="portrait">Portrait</option>
+                    </select>
+                </label>
+                <label style="font-size:12px; color:#555; display:flex; align-items:center; gap:6px;">
+                    Skala (%)
+                    <input type="number" id="print-scale" min="30" max="100" step="5" placeholder="Auto" style="width:70px; padding:4px 6px; border:1px solid #ddd; border-radius:6px;" />
+                </label>
+            </div>
             <button onclick="exportToExcel()" class="btn-export btn-excel">
                 📊 Export Excel
             </button>

@@ -5,11 +5,17 @@ requireLogin();
 $user = getCurrentUser();
 
 if ($user['role'] !== 'administrator') {
-    header('Location: ../dashboard.php');
+    header('Location: ' . BASE_PATH . '/dashboard');
     exit();
 }
 
 $conn = getDBConnection();
+// Detect optional columns to keep queries compatible with different schemas
+$hasEmailColumn = false;
+$checkEmail = $conn->query("SHOW COLUMNS FROM cabang LIKE 'email'");
+if ($checkEmail) {
+    $hasEmailColumn = $checkEmail->num_rows > 0;
+}
 $message = '';
 $action = $_GET['action'] ?? 'list';
 $cabang_id = $_GET['id'] ?? null;
@@ -24,8 +30,32 @@ if (isset($_SESSION['message'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'add') {
-            $stmt = $conn->prepare("INSERT INTO cabang (kode_cabang, nama_cabang, alamat, kota, provinsi, telepon, email, manager_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssss", $_POST['kode_cabang'], $_POST['nama_cabang'], $_POST['alamat'], $_POST['kota'], $_POST['provinsi'], $_POST['telepon'], $_POST['email'], $_POST['manager_name'], $_POST['status']);
+            if ($hasEmailColumn) {
+                $stmt = $conn->prepare("INSERT INTO cabang (kode_cabang, nama_cabang, alamat, kota, provinsi, telepon, email, manager_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssssssss",
+                    $_POST['kode_cabang'],
+                    $_POST['nama_cabang'],
+                    $_POST['alamat'],
+                    $_POST['kota'],
+                    $_POST['provinsi'],
+                    $_POST['telepon'],
+                    $_POST['email'],
+                    $_POST['manager_name'],
+                    $_POST['status']
+                );
+            } else {
+                $stmt = $conn->prepare("INSERT INTO cabang (kode_cabang, nama_cabang, alamat, kota, provinsi, telepon, manager_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssssss",
+                    $_POST['kode_cabang'],
+                    $_POST['nama_cabang'],
+                    $_POST['alamat'],
+                    $_POST['kota'],
+                    $_POST['provinsi'],
+                    $_POST['telepon'],
+                    $_POST['manager_name'],
+                    $_POST['status']
+                );
+            }
             
             if ($stmt->execute()) {
                 $_SESSION['message'] = "Cabang berhasil ditambahkan!";
@@ -38,8 +68,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
             
         } elseif ($_POST['action'] === 'edit') {
-            $stmt = $conn->prepare("UPDATE cabang SET kode_cabang=?, nama_cabang=?, alamat=?, kota=?, provinsi=?, telepon=?, email=?, manager_name=?, status=? WHERE cabang_id=?");
-            $stmt->bind_param("sssssssssi", $_POST['kode_cabang'], $_POST['nama_cabang'], $_POST['alamat'], $_POST['kota'], $_POST['provinsi'], $_POST['telepon'], $_POST['email'], $_POST['manager_name'], $_POST['status'], $_POST['cabang_id']);
+            if ($hasEmailColumn) {
+                $stmt = $conn->prepare("UPDATE cabang SET kode_cabang=?, nama_cabang=?, alamat=?, kota=?, provinsi=?, telepon=?, email=?, manager_name=?, status=? WHERE cabang_id=?");
+                $stmt->bind_param("sssssssssi",
+                    $_POST['kode_cabang'],
+                    $_POST['nama_cabang'],
+                    $_POST['alamat'],
+                    $_POST['kota'],
+                    $_POST['provinsi'],
+                    $_POST['telepon'],
+                    $_POST['email'],
+                    $_POST['manager_name'],
+                    $_POST['status'],
+                    $_POST['cabang_id']
+                );
+            } else {
+                $stmt = $conn->prepare("UPDATE cabang SET kode_cabang=?, nama_cabang=?, alamat=?, kota=?, provinsi=?, telepon=?, manager_name=?, status=? WHERE cabang_id=?");
+                $stmt->bind_param("ssssssssi",
+                    $_POST['kode_cabang'],
+                    $_POST['nama_cabang'],
+                    $_POST['alamat'],
+                    $_POST['kota'],
+                    $_POST['provinsi'],
+                    $_POST['telepon'],
+                    $_POST['manager_name'],
+                    $_POST['status'],
+                    $_POST['cabang_id']
+                );
+            }
             
             if ($stmt->execute()) {
                 $_SESSION['message'] = "Cabang berhasil diupdate!";
@@ -150,8 +206,8 @@ $conn->close();
             </nav>
             
             <div class="sidebar-footer">
-                <a href="../dashboard.php" class="btn-back">← Kembali ke Dashboard</a>
-                <a href="../logout.php" class="btn-logout">Logout</a>
+                <a href="<?php echo BASE_PATH; ?>/dashboard" class="btn-back">← Kembali ke Dashboard</a>
+                <a href="<?php echo BASE_PATH; ?>/logout" class="btn-logout">Logout</a>
             </div>
         </aside>
         

@@ -11,7 +11,7 @@
 
 /* Sidebar Styles */
 .admin-sidebar {
-    width: 260px;
+    width: 340px;
     background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
     color: white;
     display: flex;
@@ -109,7 +109,7 @@
 /* Main Content Styles */
 .admin-main {
     flex: 1;
-    margin-left: 260px;
+    margin-left: 340px;
     padding: 0;
 }
 
@@ -757,11 +757,11 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
     .admin-sidebar {
-        width: 220px;
+        width: 300px;
     }
     
     .admin-main {
-        margin-left: 220px;
+        margin-left: 300px;
     }
 }
 

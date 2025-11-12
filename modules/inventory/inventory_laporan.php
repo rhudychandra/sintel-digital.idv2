@@ -212,8 +212,29 @@ $sales_data = $stmt->get_result();
     <link rel="stylesheet" href="../../assets/css/admin-styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="../../assets/css/laporan_styles.css">
+    <style>
+        /* Print only the detail table */
+        @media print {
+            body * { visibility: hidden !important; }
+            #detail-penjualan, #detail-penjualan * { visibility: visible !important; }
+            #detail-penjualan { position: absolute; left: 0; top: 0; width: 100%; background: #ffffff; }
+            .admin-sidebar, .admin-header, .filter-box, .stats-grid, .charts-grid, .info-section { display: none !important; }
+        }
+
+        /* Ensure consistent print page and avoid row splits (default landscape, can be overridden dynamically) */
+        @page { size: A4 landscape; margin: 10mm; }
+        #detail-penjualan table { width: 100%; border-collapse: collapse; }
+        #detail-penjualan thead { display: table-header-group; }
+        #detail-penjualan tfoot { display: table-footer-group; }
+        #detail-penjualan tr { page-break-inside: avoid; }
+    </style>
+    <!-- Client-side PDF libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body class="admin-page">
+    <!-- Hidden probe to measure A4 size in pixels -->
+    <div id="a4-probe" style="position:absolute; visibility:hidden; width:297mm; height:210mm; left:-9999px; top:-9999px;"></div>
     <div class="admin-container">
         <?php include __DIR__ . '/../laporan/laporan_sidebar.php'; ?>
         
@@ -329,8 +350,71 @@ $sales_data = $stmt->get_result();
         }
         <?php endif; ?>
         
-        // Print function
+        // Dynamically set @page orientation before print
+        function applyPrintOrientation(orientation) {
+            const id = 'dynamic-print-style';
+            let style = document.getElementById(id);
+            if (!style) {
+                style = document.createElement('style');
+                style.id = id;
+                document.head.appendChild(style);
+            }
+            const safeOrientation = orientation === 'portrait' ? 'portrait' : 'landscape';
+            style.textContent = `@page { size: A4 ${safeOrientation}; margin: 10mm; }`;
+        }
+
+        // Print function: only print the detail penjualan table and scale to fit A4
         function printReport() {
+            const el = document.getElementById('detail-penjualan');
+            if (!el) { window.print(); return; }
+
+            const orientationSel = document.getElementById('print-orientation');
+            const orientation = orientationSel ? orientationSel.value : 'landscape';
+            applyPrintOrientation(orientation);
+
+            const scaleInput = document.getElementById('print-scale');
+            const userScale = scaleInput && scaleInput.value ? Math.max(0.3, Math.min(1, parseFloat(scaleInput.value) / 100)) : null;
+
+            // Convert mm to px based on browser rendering
+            const mmToPx = (() => {
+                const probe = document.createElement('div');
+                probe.style.width = '100mm';
+                probe.style.position = 'absolute';
+                probe.style.visibility = 'hidden';
+                document.body.appendChild(probe);
+                const px = probe.getBoundingClientRect().width / 100; // px per mm
+                document.body.removeChild(probe);
+                return px;
+            })();
+
+            const isLandscape = orientation !== 'portrait';
+            const pageWidthPx = (isLandscape ? 297 : 210) * mmToPx;   // A4 width in orientation
+            const pageHeightPx = (isLandscape ? 210 : 297) * mmToPx;  // A4 height in orientation
+            const marginPx = 10 * mmToPx;       // match @page margin
+
+            // Measure element size
+            const rect = el.getBoundingClientRect();
+            const elWidth = rect.width;
+            const elHeight = rect.height;
+
+            // Compute scale to fit within printable area
+            const maxWidth = pageWidthPx - marginPx * 2;
+            const maxHeight = pageHeightPx - marginPx * 2;
+            const autoScale = Math.min(1, maxWidth / elWidth, maxHeight / elHeight);
+            const scale = userScale ? Math.min(userScale, autoScale) : autoScale;
+
+            const prevTransform = el.style.transform;
+            const prevOrigin = el.style.transformOrigin;
+            el.style.transformOrigin = 'top left';
+            el.style.transform = `scale(${scale})`;
+
+            const onAfterPrint = () => {
+                el.style.transform = prevTransform;
+                el.style.transformOrigin = prevOrigin;
+                window.removeEventListener('afterprint', onAfterPrint);
+            };
+            window.addEventListener('afterprint', onAfterPrint);
+
             window.print();
         }
         
@@ -340,10 +424,35 @@ $sales_data = $stmt->get_result();
             window.location.href = '../laporan/export_laporan_excel.php?' + params.toString();
         }
         
-        // Export to PDF
-        function exportToPDF() {
-            const params = new URLSearchParams(window.location.search);
-            window.location.href = '../laporan/export_laporan_pdf.php?' + params.toString();
+        // Export to PDF (client-side): capture only the detail table
+        async function exportToPDF() {
+            const el = document.getElementById('detail-penjualan');
+            if (!el) return;
+            const { jsPDF } = window.jspdf;
+            // Orientation from UI
+            const orientationSel = document.getElementById('print-orientation');
+            const orientation = orientationSel ? orientationSel.value : 'landscape';
+            const scaleInput = document.getElementById('print-scale');
+            const userScale = scaleInput && scaleInput.value ? Math.max(0.3, Math.min(1.0, parseFloat(scaleInput.value) / 100)) : null;
+
+            // Use white background and higher html2canvas scale for quality
+            const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'pt', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 20;
+            const imgWidth = pageWidth - margin * 2;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            const y = margin;
+            // If content taller than a page, scale it to fit one page to avoid clipping (or use user scale if smaller)
+            const autoScale = Math.min(1, (pageHeight - margin * 2) / imgHeight);
+            const scaleToFit = userScale ? Math.min(userScale, autoScale) : autoScale;
+            const drawWidth = imgWidth;
+            const drawHeight = imgHeight * scaleToFit;
+            pdf.addImage(imgData, 'PNG', margin, y, drawWidth, drawHeight);
+            const fileName = 'Detail_Penjualan_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.pdf';
+            pdf.save(fileName);
         }
     </script>
                 

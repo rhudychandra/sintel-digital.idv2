@@ -23,7 +23,7 @@ $user = getCurrentUser();
         </div>
         <div class="header-buttons">
             <?php if ($user['role'] === 'administrator'): ?>
-            <a href="admin/" class="admin-button">Administrator</a>
+            <a href="<?php echo BASE_PATH; ?>/admin/" class="admin-button">Administrator</a>
             <?php endif; ?>
             
             <div class="account-dropdown">
@@ -33,24 +33,24 @@ $user = getCurrentUser();
                     <span style="font-size: 10px;">▼</span>
                 </button>
                 <div class="dropdown-menu">
-                    <a href="profile.php" class="dropdown-item">
+                    <a href="<?php echo BASE_PATH; ?>/profile" class="dropdown-item">
                         <span class="dropdown-icon">👤</span>
                         <span>Informasi Akun</span>
                     </a>
-                    <a href="profile.php?action=change_password" class="dropdown-item">
+                    <a href="<?php echo BASE_PATH; ?>/profile?action=change_password" class="dropdown-item">
                         <span class="dropdown-icon">🔐</span>
                         <span>Ubah Password</span>
                     </a>
                 </div>
             </div>
             
-            <a href="logout.php" class="logout-button">Logout</a>
+            <a href="<?php echo BASE_PATH; ?>/logout" class="logout-button">Logout</a>
         </div>
     </header>
     
     <main class="dashboard-main">
         <div class="hexagon-container">
-            <a href="modules/performance/performance-cluster.php" class="hexagon-menu">
+            <a href="<?php echo BASE_PATH; ?>/modules/performance/performance-cluster" class="hexagon-menu">
                 <div class="hexagon">
                     <div class="hexagon-inner">
                         <div class="hexagon-content">
@@ -60,7 +60,7 @@ $user = getCurrentUser();
                 </div>
             </a>
             
-            <a href="modules/inventory/inventory.php" class="hexagon-menu">
+            <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory" class="hexagon-menu">
                 <div class="hexagon">
                     <div class="hexagon-inner">
                         <div class="hexagon-content">
@@ -70,7 +70,7 @@ $user = getCurrentUser();
                 </div>
             </a>
 
-            <a href="modules/finance/finance.php" class="hexagon-menu">
+            <a href="<?php echo BASE_PATH; ?>/modules/finance/finance" class="hexagon-menu">
                 <div class="hexagon">
                     <div class="hexagon-inner">
                         <div class="hexagon-content">
@@ -80,7 +80,7 @@ $user = getCurrentUser();
                 </div>
             </a>
 
-            <a href="info.php" class="hexagon-menu">
+            <a href="<?php echo BASE_PATH; ?>/info" class="hexagon-menu">
                 <div class="hexagon">
                     <div class="hexagon-inner">
                         <div class="hexagon-content">

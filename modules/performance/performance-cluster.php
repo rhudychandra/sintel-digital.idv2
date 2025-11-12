@@ -1,7 +1,6 @@
 <?php
 require_once '../../config/config.php';
 requireLogin();
-
 $user = getCurrentUser();
 ?>
 <!DOCTYPE html>
@@ -22,28 +21,28 @@ $user = getCurrentUser();
             <span style="margin-right: 15px; color: #667eea; font-weight: 500;">
                 <?php echo htmlspecialchars($user['full_name']); ?>
             </span>
-            <a href="../../dashboard.php" class="back-button">← Kembali</a>
-            <a href="../../logout.php" class="logout-button">Logout</a>
+            <a href="<?php echo BASE_PATH; ?>/dashboard" class="back-button">← Kembali</a>
+            <a href="<?php echo BASE_PATH; ?>/logout" class="logout-button">Logout</a>
         </div>
     </header>
     
     <main class="submenu-main">
         <div class="rounded-menu-container">
-            <a href="fundamental-cluster.php" class="rounded-menu-item">
+            <a href="fundamental-cluster" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>Fundamental Cluster</h2>
                     <p>Analisis fundamental cluster</p>
                 </div>
             </a>
             
-            <a href="kpi-sales-force.php" class="rounded-menu-item">
+            <a href="kpi-sales-force" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>KPI Sales Force</h2>
                     <p>Monitor KPI sales force</p>
                 </div>
             </a>
             
-            <a href="kpi-direct-sales.php" class="rounded-menu-item">
+            <a href="kpi-direct-sales" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>KPI Direct Sales</h2>
                     <p>Monitor KPI direct sales</p>

@@ -197,7 +197,35 @@ $stock_keluar_query = "SELECT
     p.harga,
     COALESCE(c.nama_cabang, 'Pusat/Global') as nama_cabang,
     i.cabang_id,
-    u.full_name as user_name
+    u.full_name as user_name,
+    (
+        SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+        FROM inventory ii
+        WHERE ii.produk_id = i.produk_id
+          AND ((i.cabang_id IS NOT NULL AND ii.cabang_id = i.cabang_id) OR (i.cabang_id IS NULL AND ii.cabang_id IS NULL))
+          AND ii.status_approval = 'approved'
+          AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))
+    ) AS stok_sebelum_cabang,
+    CASE 
+        WHEN i.status_approval = 'approved' THEN 
+            (
+                SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+                FROM inventory ii
+                WHERE ii.produk_id = i.produk_id
+                  AND ((i.cabang_id IS NOT NULL AND ii.cabang_id = i.cabang_id) OR (i.cabang_id IS NULL AND ii.cabang_id IS NULL))
+                  AND ii.status_approval = 'approved'
+                  AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))
+            ) - i.jumlah
+        ELSE 
+            (
+                SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+                FROM inventory ii
+                WHERE ii.produk_id = i.produk_id
+                  AND ((i.cabang_id IS NOT NULL AND ii.cabang_id = i.cabang_id) OR (i.cabang_id IS NULL AND ii.cabang_id IS NULL))
+                  AND ii.status_approval = 'approved'
+                  AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))
+            )
+    END AS stok_sesudah_cabang
 FROM inventory i
 LEFT JOIN produk p ON i.produk_id = p.produk_id
 LEFT JOIN cabang c ON i.cabang_id = c.cabang_id
@@ -695,13 +723,13 @@ $conn->close();
                                             </span>
                                         </td>
                                         <td>
-                                            <span style="color: #6c757d; font-size: 14px;">
-                                                <?php echo number_format($item['stok_sebelum']); ?>
+                                            <span style="color: #6c757d; font-size: 14px;" title="Per-cabang computed">
+                                                <?php echo number_format($item['stok_sebelum_cabang']); ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <span style="color: #e74c3c; font-weight: 600; font-size: 14px;">
-                                                <?php echo number_format($item['stok_sesudah']); ?>
+                                            <span style="color: #e74c3c; font-weight: 600; font-size: 14px;" title="Per-cabang computed">
+                                                <?php echo number_format($item['stok_sesudah_cabang']); ?>
                                             </span>
                                         </td>
                                         <td><strong>Rp <?php echo number_format($item['jumlah'] * $item['harga'], 0, ',', '.'); ?></strong></td>

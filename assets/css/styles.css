@@ -18,7 +18,8 @@ body {
     display: flex;
     min-height: 100vh;
     background-color: #1a1a2e;
-    background-image: url('/sinartelekomdashboardsystem/assets/images/bg_login.jpg');
+    /* Use path relative to this CSS file so it works on any BASE_PATH */
+    background-image: url('../images/bg_login.jpg');
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;

@@ -25,28 +25,28 @@ $page_title = "Finance - Sinar Telkom Dashboard System";
             <h1>Finance Management</h1>
         </div>
         <div class="header-buttons">
-            <a href="../../dashboard.php" class="back-button">← Kembali ke Dashboard</a>
-            <a href="../../logout.php" class="logout-button">Logout</a>
+            <a href="<?php echo BASE_PATH; ?>/dashboard" class="back-button">← Kembali ke Dashboard</a>
+            <a href="<?php echo BASE_PATH; ?>/logout" class="logout-button">Logout</a>
         </div>
     </header>
 
     <main class="submenu-main">
         <div class="rounded-menu-container">
-            <a href="setoran_harian_tap.php" class="rounded-menu-item">
+            <a href="setoran_harian_tap" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>💰 Setoran Harian TAP</h2>
                     <p>Monitoring dan laporan setoran harian dari TAP</p>
                 </div>
             </a>
 
-            <a href="laporan_setoran_global.php" class="rounded-menu-item">
+            <a href="laporan_setoran_global" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>🌍 Laporan Setoran Global</h2>
                     <p>Laporan setoran menyeluruh dari semua TAP secara global</p>
                 </div>
             </a>
 
-            <a href="budget_marketing.php" class="rounded-menu-item">
+            <a href="budget_marketing" class="rounded-menu-item">
                 <div class="rounded-box">
                     <h2>📈 Laporan KAS & Budget Marketing</h2>
                     <p>Pengelolaan KAS dan Budget Marketing</p>

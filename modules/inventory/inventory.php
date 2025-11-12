@@ -1,4 +1,4 @@
-\<?php
+<?php
 require_once '../../config/config.php';
 requireLogin();
 
@@ -59,10 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Stock will be updated when approved
             if ($cabang_id) {
                 $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, status_approval, user_id, cabang_id) VALUES (?, ?, 'keluar', ?, ?, ?, ?, ?, 'pending', ?, ?)");
-                $stmt->bind_param("isiissii", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id'], $cabang_id);
+                $stmt->bind_param("isiiissii", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id'], $cabang_id);
             } else {
                 $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, status_approval, user_id) VALUES (?, ?, 'keluar', ?, ?, ?, ?, ?, 'pending', ?)");
-                $stmt->bind_param("isiisssi", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id']);
+                $stmt->bind_param("isiiissi", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id']);
             }
             
             if ($stmt->execute()) {
@@ -76,6 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Input Barang (Stok Masuk) - UPDATED WITH CABANG & ALASAN
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'input_barang') {
+    if (!in_array($user['role'], ['administrator', 'manager', 'finance'])) {
+        $error = "Akses ditolak: hanya Administrator, Manager, dan Finance yang dapat input barang.";
+    } else {
     $tanggal = $_POST['tanggal'];
     $produk_id = $_POST['produk_id'];
     $qty = $_POST['qty'];
@@ -113,16 +116,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // Stock will be updated when approved
     if ($cabang_id) {
         $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, status_approval, user_id, cabang_id) VALUES (?, ?, 'masuk', ?, ?, ?, ?, ?, 'pending', ?, ?)");
-        $stmt->bind_param("isiisssii", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id'], $cabang_id);
+        $stmt->bind_param("isiiissii", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id'], $cabang_id);
     } else {
         $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, status_approval, user_id) VALUES (?, ?, 'masuk', ?, ?, ?, ?, ?, 'pending', ?)");
-        $stmt->bind_param("isiisssi", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id']);
+        $stmt->bind_param("isiiissi", $produk_id, $tanggal, $qty, $stok_sebelum, $stok_sesudah, $referensi, $full_keterangan, $user['user_id']);
     }
     
     if ($stmt->execute()) {
         $message = "Stock masuk berhasil diajukan! Ref: " . $referensi . " | Produk: " . $produk['nama_produk'] . " | Qty: " . $qty . " | Status: PENDING (Menunggu Approval)";
     } else {
         $error = "Gagal mengajukan stock masuk: " . $conn->error;
+    }
     }
 }
 
@@ -234,8 +238,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 
                 $referensi = $no_invoice;
                 $keterangan = "Penjualan ke reseller: " . $reseller['nama_reseller'];
-                $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, user_id) VALUES (?, ?, 'keluar', ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isiisssi", $prod['produk_id'], $tanggal, $prod['qty'], $prod['stok_sebelum'], $stok_sesudah, $referensi, $keterangan, $user['user_id']);
+                $stmt = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, status_approval, user_id, cabang_id) VALUES (?, ?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?)");
+                $stmt->bind_param("isiiissii", $prod['produk_id'], $tanggal, $prod['qty'], $prod['stok_sebelum'], $stok_sesudah, $referensi, $keterangan, $user['user_id'], $cabang_id_penjualan);
                 $stmt->execute();
             }
             
@@ -432,41 +436,80 @@ if ($page === 'dashboard') {
         // Already set above, no need to change
     }
     
-    $sales_query = "
-        SELECT 
-            r.reseller_id,
-            r.nama_reseller,
-            COUNT(p.penjualan_id) as total_transaksi,
-            COALESCE(SUM(p.total), 0) as total_penjualan
-        FROM reseller r
-        LEFT JOIN penjualan p ON r.reseller_id = p.reseller_id 
-            AND p.tanggal_penjualan BETWEEN ? AND ?
-            AND p.status_pembayaran = 'paid'
-        WHERE r.status = 'active'
-        GROUP BY r.reseller_id, r.nama_reseller
-        ORDER BY total_penjualan DESC
-    ";
-    
-    $stmt = $conn->prepare($sales_query);
-    $stmt->bind_param("ss", $start_date, $end_date);
+    $isAdminDash = in_array($user['role'], ['administrator', 'manager']);
+    if ($isAdminDash) {
+        $sales_query = "
+            SELECT 
+                r.reseller_id,
+                r.nama_reseller,
+                COUNT(p.penjualan_id) as total_transaksi,
+                COALESCE(SUM(p.total), 0) as total_penjualan
+            FROM reseller r
+            LEFT JOIN penjualan p ON r.reseller_id = p.reseller_id 
+                AND p.tanggal_penjualan BETWEEN ? AND ?
+                AND (p.status_pembayaran = 'paid' OR p.status_pembayaran = 'Paid (Lunas)')
+            WHERE r.status = 'active'
+            GROUP BY r.reseller_id, r.nama_reseller
+            ORDER BY total_penjualan DESC
+        ";
+        $stmt = $conn->prepare($sales_query);
+        $stmt->bind_param("ss", $start_date, $end_date);
+    } else {
+        $sales_query = "
+            SELECT 
+                r.reseller_id,
+                r.nama_reseller,
+                COUNT(p.penjualan_id) as total_transaksi,
+                COALESCE(SUM(p.total), 0) as total_penjualan
+            FROM reseller r
+            LEFT JOIN penjualan p ON r.reseller_id = p.reseller_id 
+                AND p.tanggal_penjualan BETWEEN ? AND ?
+                AND (p.status_pembayaran = 'paid' OR p.status_pembayaran = 'Paid (Lunas)')
+                AND (p.cabang_id = ? OR (p.cabang_id IS NULL AND r.cabang_id = ?))
+            WHERE r.status = 'active' AND r.cabang_id = ?
+            GROUP BY r.reseller_id, r.nama_reseller
+            ORDER BY total_penjualan DESC
+        ";
+        $stmt = $conn->prepare($sales_query);
+        $uidCab = (int)($user['cabang_id'] ?? 0);
+        $stmt->bind_param("ssiii", $start_date, $end_date, $uidCab, $uidCab, $uidCab);
+    }
     $stmt->execute();
     $sales_data = $stmt->get_result();
     
-    $chart_query = "
-        SELECT 
-            DATE(p.tanggal_penjualan) as tanggal,
-            r.nama_reseller,
-            SUM(p.total) as total
-        FROM penjualan p
-        JOIN reseller r ON p.reseller_id = r.reseller_id
-        WHERE p.tanggal_penjualan BETWEEN ? AND ?
-            AND p.status_pembayaran = 'paid'
-        GROUP BY DATE(p.tanggal_penjualan), r.nama_reseller
-        ORDER BY tanggal, r.nama_reseller
-    ";
-    
-    $stmt = $conn->prepare($chart_query);
-    $stmt->bind_param("ss", $start_date, $end_date);
+    if ($isAdminDash) {
+        $chart_query = "
+            SELECT 
+                DATE(p.tanggal_penjualan) as tanggal,
+                r.nama_reseller,
+                SUM(p.total) as total
+            FROM penjualan p
+            JOIN reseller r ON p.reseller_id = r.reseller_id
+            WHERE p.tanggal_penjualan BETWEEN ? AND ?
+                AND (p.status_pembayaran = 'paid' OR p.status_pembayaran = 'Paid (Lunas)')
+            GROUP BY DATE(p.tanggal_penjualan), r.nama_reseller
+            ORDER BY tanggal, r.nama_reseller
+        ";
+        $stmt = $conn->prepare($chart_query);
+        $stmt->bind_param("ss", $start_date, $end_date);
+    } else {
+        $chart_query = "
+            SELECT 
+                DATE(p.tanggal_penjualan) as tanggal,
+                r.nama_reseller,
+                SUM(p.total) as total
+            FROM penjualan p
+            JOIN reseller r ON p.reseller_id = r.reseller_id
+            WHERE p.tanggal_penjualan BETWEEN ? AND ?
+                AND (p.status_pembayaran = 'paid' OR p.status_pembayaran = 'Paid (Lunas)')
+                AND (p.cabang_id = ? OR (p.cabang_id IS NULL AND r.cabang_id = ?))
+            GROUP BY DATE(p.tanggal_penjualan), r.nama_reseller
+            ORDER BY tanggal, r.nama_reseller
+        ";
+        $stmt = $conn->prepare($chart_query);
+        $uidCab = (int)($user['cabang_id'] ?? 0);
+        $stmt->bind_param("ssii", $start_date, $end_date, $uidCab, $uidCab);
+    }
     $stmt->execute();
     $chart_data = $stmt->get_result();
     
@@ -512,56 +555,53 @@ if ($page === 'dashboard') {
 </head>
 <body class="admin-page">
     <div class="admin-container">
-        <aside class="admin-sidebar">
+        <aside class="admin-sidebar" style="width: 340px;">
             <div class="sidebar-header">
-                <div style="display: flex; gap: 15px; align-items: stretch;">
-                    <!-- Logo -->
-                    <div style="flex-shrink: 0;">
-                        <img src="../../assets/images/logo_icon.png" alt="Logo" style="width: 80px; height: 80px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,0.1); padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <div style="display: flex; flex-direction: column; gap: 15px; align-items: stretch;">
+                    <!-- Logo and Title -->
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="flex-shrink: 0;">
+                            <img src="../../assets/images/logo_icon.png" alt="Logo" style="width: 60px; height: 60px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,0.1); padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                        </div>
+                        <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white; letter-spacing: 0.5px;">INVENTORY</h2>
                     </div>
                     
-                    <!-- Info Section -->
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                        <!-- Title -->
-                        <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: white; letter-spacing: 0.5px;">INVENTORY</h2>
-                        
-                        <!-- User Info Box -->
-                        <div style="background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%); padding: 8px 12px; border-radius: 8px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
-                            <p style="margin: 0 0 3px 0; font-weight: 600; font-size: 12px; color: white; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo htmlspecialchars($user['full_name']); ?></p>
-                            <p style="margin: 0; font-size: 10px; color: rgba(255,255,255,0.75); font-weight: 400; text-transform: capitalize; line-height: 1.2;"><?php echo ucfirst($user['role']); ?></p>
-                        </div>
+                    <!-- User Info Box -->
+                    <div style="background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%); padding: 12px 14px; border-radius: 10px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+                        <p style="margin: 0 0 4px 0; font-weight: 600; font-size: 13px; color: white; line-height: 1.4; word-wrap: break-word; word-break: break-word;"><?php echo htmlspecialchars($user['full_name']); ?></p>
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.85); font-weight: 400; text-transform: capitalize; line-height: 1.3;"><?php echo ucfirst($user['role']); ?></p>
                     </div>
                 </div>
             </div>
             
             <nav class="sidebar-nav">
-                <a href="?page=dashboard" class="nav-item <?php echo $page === 'dashboard' ? 'active' : ''; ?>">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=dashboard" class="nav-item <?php echo $page === 'dashboard' ? 'active' : ''; ?>">
                     <span class="nav-icon">📊</span>
                     <span>Dashboard</span>
                 </a>
                 <?php if (in_array($user['role'], ['administrator', 'manager', 'finance'])): ?>
-                <a href="?page=input_barang" class="nav-item <?php echo $page === 'input_barang' ? 'active' : ''; ?>">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_barang" class="nav-item <?php echo $page === 'input_barang' ? 'active' : ''; ?>">
                     <span class="nav-icon">📥</span>
                     <span>Input Barang</span>
                 </a>
                 <?php endif; ?>
-                <a href="inventory_stock_masuk.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_masuk.php" class="nav-item">
                     <span class="nav-icon">📥</span>
                     <span>Stock Masuk</span>
                 </a>
-                <a href="inventory_stock_keluar.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_keluar.php" class="nav-item">
                     <span class="nav-icon">📤</span>
                     <span>Stock Keluar</span>
                 </a>
-                <a href="?page=input_penjualan" class="nav-item <?php echo $page === 'input_penjualan' ? 'active' : ''; ?>">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_penjualan" class="nav-item <?php echo $page === 'input_penjualan' ? 'active' : ''; ?>">
                     <span class="nav-icon">💰</span>
                     <span>Input Penjualan</span>
                 </a>
-                <a href="inventory_stock.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock.php" class="nav-item">
                     <span class="nav-icon">📦</span>
                     <span>Stock</span>
                 </a>
-                <a href="inventory_laporan.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_laporan.php" class="nav-item">
                     <span class="nav-icon">📋</span>
                     <span>Laporan Penjualan</span>
                 </a>
@@ -768,338 +808,17 @@ if ($page === 'dashboard') {
                         });
                     </script>
                     
-                <?php elseif ($page === 'input_barang'): ?>
-                    <?php if (!in_array($user['role'], ['administrator', 'manager', 'finance'])): ?>
-                        <div style="background: #f8d7da; color: #721c24; padding: 30px; border-radius: 12px; text-align: center;">
-                            <h2 style="margin: 0 0 10px 0;">🚫 Akses Ditolak</h2>
-                            <p>Anda tidak memiliki akses ke halaman Input Barang.</p>
-                            <p>Hanya role <strong>Finance, Administrator, dan Manager</strong> yang dapat mengakses halaman ini.</p>
-                            <a href="?page=dashboard" class="btn-add" style="margin-top: 20px; display: inline-block;">← Kembali ke Dashboard</a>
-                        </div>
-                    <?php else: ?>
-                    <div class="form-container">
-                        <h2>📥 Form Input Barang</h2>
-                        <form method="POST">
-                            <input type="hidden" name="action" value="input_barang">
-                            
-                            <div class="form-group">
-                                <label>Tanggal</label>
-                                <input type="date" name="tanggal" value="<?php echo date('Y-m-d'); ?>" required>
-                            </div>
-                            
-                            <?php if (in_array($user['role'], ['administrator', 'manager'])): ?>
-                            <!-- Dropdown Cabang untuk Administrator & Manager (Semua Cabang) -->
-                            <div class="form-group">
-                                <label>Cabang</label>
-                                <select name="cabang_id" required>
-                                    <option value="">-- Pilih Cabang --</option>
-                                    <?php 
-                                    if ($cabang_list) {
-                                        $cabang_list->data_seek(0);
-                                        while ($c = $cabang_list->fetch_assoc()): 
-                                    ?>
-                                        <option value="<?php echo $c['cabang_id']; ?>">
-                                            <?php echo htmlspecialchars($c['nama_cabang']); ?>
-                                        </option>
-                                    <?php endwhile; } ?>
-                                </select>
-                            </div>
-                            <?php else: ?>
-                            <!-- Readonly Cabang untuk Admin, Staff, Supervisor & Finance -->
-                            <div class="form-group">
-                                <label>Cabang</label>
-                                <input type="text" value="<?php 
-                                    $stmt = $conn->prepare("SELECT nama_cabang FROM cabang WHERE cabang_id = ?");
-                                    $stmt->bind_param("i", $user['cabang_id']);
-                                    $stmt->execute();
-                                    $result = $stmt->get_result();
-                                    if ($result->num_rows > 0) {
-                                        $cabang = $result->fetch_assoc();
-                                        echo htmlspecialchars($cabang['nama_cabang']);
-                                    } else {
-                                        echo 'Cabang tidak ditemukan';
-                                    }
-                                ?>" readonly style="background: #f8f9fa; cursor: not-allowed;">
-                                <small style="color: #7f8c8d; font-size: 12px;">Cabang otomatis sesuai dengan akun Anda</small>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <div class="form-group">
-                                <label>Produk</label>
-                                <select name="produk_id" required>
-                                    <option value="">-- Pilih Produk --</option>
-                                    <?php 
-                                    if ($products) {
-                                        $products->data_seek(0);
-                                        while ($p = $products->fetch_assoc()): 
-                                    ?>
-                                        <option value="<?php echo $p['produk_id']; ?>">
-                                            <?php echo htmlspecialchars($p['nama_produk']); ?> (Stok: <?php echo $p['stok']; ?>)
-                                        </option>
-                                    <?php endwhile; } ?>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Quantity</label>
-                                <input type="number" name="qty" min="1" required placeholder="Masukkan jumlah">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Alasan Barang Masuk</label>
-                                <select name="alasan_masuk" required>
-                                    <option value="">-- Pilih Alasan --</option>
-                                    <option value="DO Cluster">DO Cluster</option>
-                                    <option value="Supplier">Supplier</option>
-                                    <option value="Stock Masuk">Stock Masuk</option>
-                                    <option value="Return">Return</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Keterangan Tambahan</label>
-                                <textarea name="keterangan" rows="3" placeholder="Keterangan detail (opsional)"></textarea>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="submit" class="btn-submit">💾 Simpan</button>
-                                <a href="?page=dashboard" class="btn-cancel">❌ Batal</a>
-                            </div>
-                        </form>
-                    
-                    <!-- Riwayat Input Barang -->
-                    <div style="margin-top: 40px;">
-                        <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); margin-bottom: 20px;">
-                            <h2 style="color: #2c3e50; font-size: 20px; margin-bottom: 20px;">📋 Riwayat Input Barang</h2>
-                            <form method="GET" style="margin-bottom: 20px;">
-                                <input type="hidden" name="page" value="input_barang">
-                                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
-                                    <div style="flex: 1; min-width: 200px;">
-                                        <label style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 500;">Tanggal Mulai</label>
-                                        <input type="date" name="input_start" value="<?php echo $input_barang_start_date; ?>" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px;">
-                                    </div>
-                                    <div style="flex: 1; min-width: 200px;">
-                                        <label style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 500;">Tanggal Akhir</label>
-                                        <input type="date" name="input_end" value="<?php echo $input_barang_end_date; ?>" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px;">
-                                    </div>
-                                    <div>
-                                        <button type="submit" class="btn-add">🔍 Filter</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                        
-                        <div class="table-container">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                <h3 style="margin: 0; color: #2c3e50;">Data Input Barang</h3>
-                                <div style="display: flex; gap: 10px;">
-                                    <button onclick="exportInputToExcel()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-                                        📊 Excel
-                                    </button>
-                                    <button onclick="exportInputToCSV()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-                                        📄 CSV
-                                    </button>
-                                    <button onclick="exportInputToPDF()" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-                                        📕 PDF
-                                    </button>
-                                    <button onclick="printInputBarang()" style="background: #9b59b6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-                                        🖨️ Print
-                                    </button>
-                                </div>
-                            </div>
-                            <table class="data-table" id="inputBarangTable">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Tanggal</th>
-                                        <th>Referensi</th>
-                                        <th>Produk</th>
-                                        <th>Kategori</th>
-                                        <th>Cabang</th>
-                                        <th>Qty</th>
-                                        <th>Nilai</th>
-                                        <th>Alasan</th>
-                                        <th>Status</th>
-                                        <th>User</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    $no = 1;
-                                    $total_qty = 0;
-                                    $total_nilai = 0;
-                                    
-                                    if ($input_barang_data && $input_barang_data->num_rows > 0) {
-                                        while ($row = $input_barang_data->fetch_assoc()) { 
-                                            $nilai = $row['jumlah'] * $row['harga'];
-                                            $total_qty += $row['jumlah'];
-                                            $total_nilai += $nilai;
-                                            
-                                            // Extract alasan from keterangan
-                                            $alasan = '-';
-                                            if (preg_match('/Alasan: ([^|]+)/', $row['keterangan'], $matches)) {
-                                                $alasan = trim($matches[1]);
-                                            }
-                                    ?>
-                                    <tr>
-                                        <td><?php echo $no++; ?></td>
-                                        <td><?php echo date('d/m/Y', strtotime($row['tanggal'])); ?></td>
-                                        <td><strong style="color: #667eea; font-size: 12px;"><?php echo htmlspecialchars($row['referensi']); ?></strong></td>
-                                        <td><?php echo htmlspecialchars($row['nama_produk']); ?></td>
-                                        <td><span style="font-size: 12px;"><?php echo htmlspecialchars($row['kategori']); ?></span></td>
-                                        <td><?php echo htmlspecialchars($row['nama_cabang'] ?? '-'); ?></td>
-                                        <td style="text-align: center;"><strong><?php echo number_format($row['jumlah']); ?></strong></td>
-                                        <td><strong style="color: #27ae60;">Rp <?php echo number_format($nilai, 0, ',', '.'); ?></strong></td>
-                                        <td><span style="font-size: 12px;"><?php echo htmlspecialchars($alasan); ?></span></td>
-                                        <td>
-                                            <?php 
-                                            $status = $row['status_approval'];
-                                            $badge_color = '';
-                                            $badge_bg = '';
-                                            
-                                            switch($status) {
-                                                case 'approved':
-                                                    $badge_color = '#27ae60';
-                                                    $badge_bg = '#d4edda';
-                                                    $status_text = '✅ Approved';
-                                                    break;
-                                                case 'pending':
-                                                    $badge_color = '#f39c12';
-                                                    $badge_bg = '#fff3cd';
-                                                    $status_text = '⏳ Pending';
-                                                    break;
-                                                case 'rejected':
-                                                    $badge_color = '#e74c3c';
-                                                    $badge_bg = '#f8d7da';
-                                                    $status_text = '❌ Rejected';
-                                                    break;
-                                                default:
-                                                    $badge_color = '#7f8c8d';
-                                                    $badge_bg = '#e9ecef';
-                                                    $status_text = $status;
-                                            }
-                                            ?>
-                                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; background: <?php echo $badge_bg; ?>; color: <?php echo $badge_color; ?>;">
-                                                <?php echo $status_text; ?>
-                                            </span>
-                                        </td>
-                                        <td><small><?php echo htmlspecialchars($row['user_name']); ?></small></td>
-                                    </tr>
-                                    <?php 
-                                        }
-                                    } else { ?>
-                                    <tr>
-                                        <td colspan="11" style="text-align: center; padding: 30px; color: #7f8c8d;">
-                                            Tidak ada data input barang untuk periode ini
-                                        </td>
-                                    </tr>
-                                    <?php } ?>
-                                </tbody>
-                                <?php if ($input_barang_data && $input_barang_data->num_rows > 0): ?>
-                                <tfoot>
-                                    <tr style="background: #f8f9fa; font-weight: 600;">
-                                        <td colspan="6" style="text-align: right; padding: 15px;">TOTAL:</td>
-                                        <td style="text-align: center;"><strong><?php echo number_format($total_qty); ?></strong></td>
-                                        <td style="color: #27ae60; font-size: 16px;"><strong>Rp <?php echo number_format($total_nilai, 0, ',', '.'); ?></strong></td>
-                                        <td colspan="3"></td>
-                                    </tr>
-                                </tfoot>
-                                <?php endif; ?>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <script>
-                    // Export Input Barang to Excel
-                    function exportInputToExcel() {
-                        const table = document.getElementById('inputBarangTable');
-                        if (!table) {
-                            alert('Tidak ada data untuk di-export');
-                            return;
-                        }
-                        
-                        let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-                        html += '<head><meta charset="utf-8"><style>table {border-collapse: collapse;} th, td {border: 1px solid #ddd; padding: 8px;}</style></head>';
-                        html += '<body>';
-                        html += '<h2>Riwayat Input Barang</h2>';
-                        html += '<p>Periode: <?php echo date("d/m/Y", strtotime($input_barang_start_date)); ?> - <?php echo date("d/m/Y", strtotime($input_barang_end_date)); ?></p>';
-                        html += '<table>' + table.innerHTML + '</table>';
-                        html += '</body></html>';
-                        
-                        const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' });
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = 'Riwayat_Input_Barang_' + new Date().toISOString().slice(0,10) + '.xls';
-                        link.click();
-                        window.URL.revokeObjectURL(url);
-                    }
-                    
-                    // Export Input Barang to CSV
-                    function exportInputToCSV() {
-                        const table = document.getElementById('inputBarangTable');
-                        if (!table) {
-                            alert('Tidak ada data untuk di-export');
-                            return;
-                        }
-                        
-                        let csv = [];
-                        const rows = table.querySelectorAll('tr');
-                        
-                        for (let i = 0; i < rows.length; i++) {
-                            const row = [];
-                            const cols = rows[i].querySelectorAll('td, th');
-                            
-                            for (let j = 0; j < cols.length; j++) {
-                                let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/"/g, '""');
-                                row.push('"' + data + '"');
-                            }
-                            
-                            csv.push(row.join(','));
-                        }
-                        
-                        const csvContent = csv.join('\n');
-                        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = 'Riwayat_Input_Barang_' + new Date().toISOString().slice(0,10) + '.csv';
-                        link.click();
-                        window.URL.revokeObjectURL(url);
-                    }
-                    
-                    // Export Input Barang to PDF
-                    function exportInputToPDF() {
-                        window.print();
-                    }
-                    
-                    // Print Input Barang
-                    function printInputBarang() {
-                        const printContent = document.getElementById('inputBarangTable').outerHTML;
-                        const printWindow = window.open('', '', 'height=600,width=800');
-                        
-                        printWindow.document.write('<html><head><title>Riwayat Input Barang</title>');
-                        printWindow.document.write('<style>');
-                        printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
-                        printWindow.document.write('h2 { color: #2c3e50; }');
-                        printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 20px; }');
-                        printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }');
-                        printWindow.document.write('th { background: #667eea; color: white; font-weight: 600; }');
-                        printWindow.document.write('tfoot { background: #f8f9fa; font-weight: 600; }');
-                        printWindow.document.write('@media print { button { display: none; } }');
-                        printWindow.document.write('</style>');
-                        printWindow.document.write('</head><body>');
-                        printWindow.document.write('<h2>Riwayat Input Barang</h2>');
-                        printWindow.document.write('<p><strong>Periode:</strong> <?php echo date("d/m/Y", strtotime($input_barang_start_date)); ?> - <?php echo date("d/m/Y", strtotime($input_barang_end_date)); ?></p>');
-                        printWindow.document.write('<p><strong>Dicetak:</strong> ' + new Date().toLocaleString('id-ID') + '</p>');
-                        printWindow.document.write(printContent);
-                        printWindow.document.write('</body></html>');
-                        
-                        printWindow.document.close();
-                        printWindow.print();
-                    }
-                    </script>
-                    <?php endif; ?>
+                                <?php elseif ($page === 'input_barang'): ?>
+                                    <?php if (!in_array($user['role'], ['administrator', 'manager', 'finance'])): ?>
+                                        <div style="background:#f8d7da;color:#721c24;padding:25px;border-radius:12px;margin-bottom:20px;">
+                                            <h2 style="margin:0 0 10px 0;">🚫 Akses Ditolak</h2>
+                                            <p>Role Anda (<strong><?php echo htmlspecialchars($user['role']); ?></strong>) tidak memiliki akses ke halaman Input Barang.</p>
+                                            <p>Hanya <strong>Administrator, Manager, Finance</strong> yang diizinkan.</p>
+                                            <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=dashboard" class="btn-add" style="margin-top:15px;display:inline-block;">← Kembali ke Dashboard</a>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php include __DIR__ . '/partials/input_barang.php'; ?>
+                                    <?php endif; ?>
                     
                 <?php elseif ($page === 'input_penjualan'): ?>
                     <div class="form-container" style="max-width: 900px;">
@@ -1213,10 +932,10 @@ if ($page === 'dashboard') {
                                     <label>Status Pembayaran</label>
                                     <select name="status_pembayaran" required style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px;">
                                         <option value="">-- Pilih Status --</option>
-                                        <option value="Paid">Paid (Lunas)</option>
-                                        <option value="Pending">Pending (Menunggu)</option>
-                                        <option value="TOP">TOP (Term of Payment)</option>
-                                        <option value="Cancelled">Cancelled (Dibatalkan)</option>
+                                        <option value="Paid (Lunas)">Paid (Lunas)</option>
+                                        <option value="Pending (Menunggu)">Pending (Menunggu)</option>
+                                        <option value="TOP (Term Off Payment)">TOP (Term Off Payment)</option>
+                                        <option value="Cancelled (Dibatalkan)">Cancelled (Dibatalkan)</option>
                                     </select>
                                 </div>
                             </div>
@@ -1596,6 +1315,24 @@ if ($page === 'dashboard') {
                                             $badge_bg = '';
                                             
                                             switch($status) {
+                                                // New canonical values
+                                                case 'Paid (Lunas)':
+                                                    $badge_color = '#27ae60';
+                                                    $badge_bg = '#d4edda';
+                                                    break;
+                                                case 'Pending (Menunggu)':
+                                                    $badge_color = '#f39c12';
+                                                    $badge_bg = '#fff3cd';
+                                                    break;
+                                                case 'TOP (Term Off Payment)':
+                                                    $badge_color = '#3498db';
+                                                    $badge_bg = '#d1ecf1';
+                                                    break;
+                                                case 'Cancelled (Dibatalkan)':
+                                                    $badge_color = '#e74c3c';
+                                                    $badge_bg = '#f8d7da';
+                                                    break;
+                                                // Backward compatibility with old/simple values
                                                 case 'Paid':
                                                 case 'paid':
                                                     $badge_color = '#27ae60';
@@ -1612,6 +1349,7 @@ if ($page === 'dashboard') {
                                                     break;
                                                 case 'Cancelled':
                                                 case 'cancelled':
+                                                case 'refunded':
                                                     $badge_color = '#e74c3c';
                                                     $badge_bg = '#f8d7da';
                                                     break;

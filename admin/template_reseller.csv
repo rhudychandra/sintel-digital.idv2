@@ -1,4 +1,35 @@
 kode_reseller,nama_reseller,nama_perusahaan,kategori,alamat,kota,provinsi,telepon,email,contact_person,status
-RSL001,Toko Elektronik Jaya,PT Elektronik Jaya Abadi,Sales Force,"Jl. Mangga Dua No. 10",Jakarta,DKI Jakarta,021-11111111,jaya@email.com,John Doe,active
-RSL002,Mega Telkom Store,CV Mega Telkom,Manager,"Jl. Dago No. 20",Bandung,Jawa Barat,022-22222222,mega@email.com,Jane Smith,active
-RSL003,Surabaya Tech,PT Surabaya Technology,Supervisor,"Jl. Pemuda No. 30",Surabaya,Jawa Timur,031-33333333,tech@email.com,Robert Brown,active
+TPT005,Andrian Guntur,CV. SINAR TELEKOM,Supervisor,Lahat,Lahat,Sumatera Selatan,8,supervisor@sinartelkom.com,Andrian Guntur,active
+TPT006,Wahyu Hidayat,CV. SINAR TELEKOM,Supervisor,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,supervisor@sinartelkom.com,Wahyu Hidayat,active
+TPT007,Perli,CV. SINAR TELEKOM,Supervisor,Musi Rawas,Musi Rawas,Sumatera Selatan,8,supervisor@sinartelkom.com,Perli,active
+TPT008,Dody Delta,CV. SINAR TELEKOM,Supervisor,Empat Lawang,Empat Lawang,Sumatera Selatan,8,supervisor@sinartelkom.com,Dody Delta,active
+TPT009,Ahmad Rifko,CV. SINAR TELEKOM,Supervisor,Musi Rawas Utara,Musi Rawas Utara,Sumatera Selatan,8,supervisor@sinartelkom.com,Ahmad Rifko,active
+TPT010,Hari Priyanto,CV. SINAR TELEKOM,Supervisor,Kota Pagar Alam,Kota Pagar Alam,Sumatera Selatan,8,supervisor@sinartelkom.com,Hari Priyanto,active
+TPT011,Jeni Handika,CV. SINAR TELEKOM,Supervisor,Empat Lawang,Empat Lawang,Sumatera Selatan,8,supervisor@sinartelkom.com,Jeni Handika,active
+TPT012,Donal Septian,CV. SINAR TELEKOM,Sales Force,Empat Lawang,Empat Lawang,Sumatera Selatan,8,salesforce@sinartelkom.com,Donal Septian,active
+TPT013,Ego Saputra,CV. SINAR TELEKOM,Sales Force,Empat Lawang,Empat Lawang,Sumatera Selatan,8,salesforce@sinartelkom.com,Ego Saputra,active
+TPT014,Kgs Jauhari Fikri,CV. SINAR TELEKOM,Sales Force,Empat Lawang,Empat Lawang,Sumatera Selatan,8,salesforce@sinartelkom.com,Kgs Jauhari Fikri,active
+TPT015,Angga Ihza Rambe,CV. SINAR TELEKOM,Sales Force,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,salesforce@sinartelkom.com,Angga Ihza Rambe,active
+TPT016,Angga Triska,CV. SINAR TELEKOM,Sales Force,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,salesforce@sinartelkom.com,Angga Triska,active
+TPT017,Derry Setyadi,CV. SINAR TELEKOM,Sales Force,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,salesforce@sinartelkom.com,Derry Setyadi,active
+TPT018,Jaka Umbara,CV. SINAR TELEKOM,Sales Force,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,salesforce@sinartelkom.com,Jaka Umbara,active
+TPT019,Leo Waldi,CV. SINAR TELEKOM,Sales Force,Kota Lubuklinggau,Kota Lubuklinggau,Sumatera Selatan,8,salesforce@sinartelkom.com,Leo Waldi,active
+TPT020,Frediansyah,CV. SINAR TELEKOM,Sales Force,Kota Pagar Alam,Kota Pagar Alam,Sumatera Selatan,8,salesforce@sinartelkom.com,Frediansyah,active
+TPT021,Ivan Gustiawan,CV. SINAR TELEKOM,Sales Force,Kota Pagar Alam,Kota Pagar Alam,Sumatera Selatan,8,salesforce@sinartelkom.com,Ivan Gustiawan,active
+TPT022,Nurul Herizen,CV. SINAR TELEKOM,Sales Force,Kota Pagar Alam,Kota Pagar Alam,Sumatera Selatan,8,salesforce@sinartelkom.com,Nurul Herizen,active
+TPT023,Alpi Syahrin,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Alpi Syahrin,active
+TPT024,Dani Rahman,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Dani Rahman,active
+TPT025,Jumadil Qubro,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Jumadil Qubro,active
+TPT026,Naufal Daffa Faros,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Naufal Daffa Faros,active
+TPT027,Rian Satria Agung Saputra,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Rian Satria Agung Saputra,active
+TPT028,Sonny Tonando,CV. SINAR TELEKOM,Sales Force,Lahat,Lahat,Sumatera Selatan,8,salesforce@sinartelkom.com,Sonny Tonando,active
+TPT029,Agung Maulana,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Agung Maulana,active
+TPT030,Agus Waluyo,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Agus Waluyo,active
+TPT031,Dopri Zuarsyah,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Dopri Zuarsyah,active
+TPT032,Jeni Handika,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Jeni Handika,active
+TPT033,Sholahuddin,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Sholahuddin,active
+TPT034,Triono Susanto,CV. SINAR TELEKOM,Sales Force,Musi Rawas,Musi Rawas,Sumatera Selatan,8,salesforce@sinartelkom.com,Triono Susanto,active
+TPT035,Abdul Halim,CV. SINAR TELEKOM,Sales Force,Musi Rawas Utara,Musi Rawas Utara,Sumatera Selatan,8,salesforce@sinartelkom.com,Abdul Halim,active
+TPT036,Angga Pranata,CV. SINAR TELEKOM,Sales Force,Musi Rawas Utara,Musi Rawas Utara,Sumatera Selatan,8,salesforce@sinartelkom.com,Angga Pranata,active
+TPT037,David Alex Sander,CV. SINAR TELEKOM,Sales Force,Musi Rawas Utara,Musi Rawas Utara,Sumatera Selatan,8,salesforce@sinartelkom.com,David Alex Sander,active
+TPT038,Deni Farizal,CV. SINAR TELEKOM,Sales Force,Musi Rawas Utara,Musi Rawas Utara,Sumatera Selatan,8,salesforce@sinartelkom.com,Deni Farizal,active

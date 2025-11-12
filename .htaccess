@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Aturan 1: Alihkan permintaan kosong (root) ke halaman login
+    RewriteRule ^$ login.php [L]
+    
+    # Aturan 2: Tambahkan ekstensi .php secara internal untuk URL bersih
+    # - Jangan terapkan aturan jika file yang diminta ada
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # - Jangan terapkan aturan jika direktori yang diminta ada
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # - Terapkan aturan untuk semua permintaan lainnya
+    RewriteRule ^(.+)$ $1.php [L,QSA]
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes

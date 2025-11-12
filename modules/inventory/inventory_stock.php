@@ -5,6 +5,15 @@ requireLogin();
 $user = getCurrentUser();
 $conn = getDBConnection();
 
+// Detect optional columns in inventory (cabang_id, status_approval) to build flexible queries
+$inventory_columns = [];
+try {
+    $colRes = $conn->query("SHOW COLUMNS FROM inventory");
+    while ($colRes && $c = $colRes->fetch_assoc()) { $inventory_columns[$c['Field']] = true; }
+} catch (Exception $e) { /* ignore */ }
+$has_cabang_id = isset($inventory_columns['cabang_id']);
+$has_status_approval = isset($inventory_columns['status_approval']);
+
 // Get filter parameters
 $filter_start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01'); // First day of current month
 $filter_end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d'); // Today
@@ -94,18 +103,23 @@ $params[] = $filter_start_date;
 $params[] = $filter_end_date;
 $types .= "ss";
 
-// Role-based cabang filter
+// Role-based cabang filter (non-admin/manager): restrict to effective cabang
+// Effective cabang resolution priority: inventory.cabang_id -> reseller.cabang_id -> user.cabang_id
 if (!in_array($user['role'], ['administrator', 'manager'])) {
-    $where_conditions[] = "(i.cabang_id = ? OR i.cabang_id IS NULL)";
+    $where_conditions[] = "((i.cabang_id IS NOT NULL AND i.cabang_id = ?) OR (i.cabang_id IS NULL AND ((r.cabang_id IS NOT NULL AND r.cabang_id = ?) OR (r.cabang_id IS NULL AND u.cabang_id = ?))))";
     $params[] = $user['cabang_id'];
-    $types .= "i";
+    $params[] = $user['cabang_id'];
+    $params[] = $user['cabang_id'];
+    $types .= "iii";
 }
 
-// Cabang filter
-if (!empty($filter_cabang)) {
-    $where_conditions[] = "i.cabang_id = ?";
+// Cabang filter (admin/manager selectable): include lines where effective cabang matches selection
+if (!empty($filter_cabang) && in_array($user['role'], ['administrator', 'manager'])) {
+    $where_conditions[] = "((i.cabang_id IS NOT NULL AND i.cabang_id = ?) OR (i.cabang_id IS NULL AND ((r.cabang_id IS NOT NULL AND r.cabang_id = ?) OR (r.cabang_id IS NULL AND u.cabang_id = ?))))";
     $params[] = $filter_cabang;
-    $types .= "i";
+    $params[] = $filter_cabang;
+    $params[] = $filter_cabang;
+    $types .= "iii";
 }
 
 // Produk filter
@@ -124,9 +138,15 @@ if (!empty($filter_tipe)) {
 
 $where_clause = implode(" AND ", $where_conditions);
 
+// Build optional approval filter for subqueries (branch stock computation)
+$approval_filter_sub = $has_status_approval ? " AND ii.status_approval = 'approved'" : "";
+
 // Get total count for pagination
 $count_query = "SELECT COUNT(*) as total 
     FROM inventory i 
+    LEFT JOIN penjualan pj ON pj.no_invoice = i.referensi
+    LEFT JOIN reseller r ON pj.reseller_id = r.reseller_id
+    LEFT JOIN users u ON i.user_id = u.user_id
     WHERE " . $where_clause;
 
 $stmt = $conn->prepare($count_query);
@@ -152,12 +172,89 @@ $inventory_query = "SELECT
     p.nama_produk,
     p.kategori,
     p.harga,
-    COALESCE(c.nama_cabang, 
-        CASE 
-            WHEN i.cabang_id IS NULL THEN 'Pusat/Global'
-            ELSE '-'
-        END
-    ) as nama_cabang,
+    COALESCE(c.nama_cabang, cr.nama_cabang, uc.nama_cabang, 'Pusat/Global') as nama_cabang,
+    CASE 
+        WHEN i.cabang_id IS NOT NULL THEN i.cabang_id
+        WHEN r.cabang_id IS NOT NULL THEN r.cabang_id
+        WHEN u.cabang_id IS NOT NULL THEN u.cabang_id
+        ELSE NULL
+    END AS cabang_effective_id,
+    (
+        SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+        FROM inventory ii
+        LEFT JOIN penjualan p2 ON p2.no_invoice = ii.referensi
+        LEFT JOIN reseller r2 ON p2.reseller_id = r2.reseller_id
+        LEFT JOIN users u2 ON ii.user_id = u2.user_id
+        WHERE ii.produk_id = i.produk_id
+          AND (
+                (ii.cabang_id IS NOT NULL AND ii.cabang_id = 
+                    (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                )
+                OR (
+                    ii.cabang_id IS NULL AND (
+                        r2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                        OR (
+                            r2.cabang_id IS NULL AND u2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                        )
+                    )
+                )
+            )
+          AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))" 
+          . $approval_filter_sub . 
+    ") AS stok_sebelum_cabang,
+    CASE WHEN i.tipe_transaksi='masuk' THEN 
+        (
+            (
+                SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+                FROM inventory ii
+                LEFT JOIN penjualan p2 ON p2.no_invoice = ii.referensi
+                LEFT JOIN reseller r2 ON p2.reseller_id = r2.reseller_id
+                LEFT JOIN users u2 ON ii.user_id = u2.user_id
+                WHERE ii.produk_id = i.produk_id
+                  AND (
+                        (ii.cabang_id IS NOT NULL AND ii.cabang_id = 
+                            (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                        )
+                        OR (
+                            ii.cabang_id IS NULL AND (
+                                r2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                                OR (
+                                    r2.cabang_id IS NULL AND u2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                                )
+                            )
+                        )
+                    )
+                  AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))" 
+                  . $approval_filter_sub . 
+            ") + i.jumlah
+        )
+        ELSE 
+        (
+            (
+                SELECT COALESCE(SUM(CASE WHEN ii.tipe_transaksi='masuk' THEN ii.jumlah ELSE -ii.jumlah END),0)
+                FROM inventory ii
+                LEFT JOIN penjualan p2 ON p2.no_invoice = ii.referensi
+                LEFT JOIN reseller r2 ON p2.reseller_id = r2.reseller_id
+                LEFT JOIN users u2 ON ii.user_id = u2.user_id
+                WHERE ii.produk_id = i.produk_id
+                  AND (
+                        (ii.cabang_id IS NOT NULL AND ii.cabang_id = 
+                            (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                        )
+                        OR (
+                            ii.cabang_id IS NULL AND (
+                                r2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                                OR (
+                                    r2.cabang_id IS NULL AND u2.cabang_id = (CASE WHEN i.cabang_id IS NOT NULL THEN i.cabang_id WHEN r.cabang_id IS NOT NULL THEN r.cabang_id WHEN u.cabang_id IS NOT NULL THEN u.cabang_id ELSE NULL END)
+                                )
+                            )
+                        )
+                    )
+                  AND (ii.tanggal < i.tanggal OR (ii.tanggal = i.tanggal AND ii.inventory_id < i.inventory_id))" 
+                  . $approval_filter_sub . 
+            ") - i.jumlah
+        )
+    END AS stok_sesudah_cabang,
     u.full_name as user_name,
     uc.nama_cabang as user_cabang
 FROM inventory i
@@ -165,6 +262,9 @@ LEFT JOIN produk p ON i.produk_id = p.produk_id
 LEFT JOIN cabang c ON i.cabang_id = c.cabang_id
 LEFT JOIN users u ON i.user_id = u.user_id
 LEFT JOIN cabang uc ON u.cabang_id = uc.cabang_id
+LEFT JOIN penjualan pj ON pj.no_invoice = i.referensi
+LEFT JOIN reseller r ON pj.reseller_id = r.reseller_id
+LEFT JOIN cabang cr ON r.cabang_id = cr.cabang_id
 WHERE " . $where_clause . "
 ORDER BY i.tanggal DESC, i.inventory_id DESC
 LIMIT ? OFFSET ?";
@@ -277,14 +377,21 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
             $cabang_id = $cabang['cabang_id'];
             
             // Calculate stock based on approved transactions only
-            $stock_query = "SELECT 
-                COALESCE(SUM(CASE WHEN tipe_transaksi = 'masuk' THEN jumlah ELSE -jumlah END), 0) as total_stock
-                FROM inventory 
-                WHERE produk_id = ? 
-                AND cabang_id = ? 
-                AND status_approval = 'approved'";
+            // Build dynamic stock query depending on available columns
+            $stock_query = "SELECT COALESCE(SUM(CASE WHEN tipe_transaksi='masuk' THEN jumlah ELSE -jumlah END),0) AS total_stock FROM inventory WHERE produk_id = ?";
+            if ($has_cabang_id) {
+                $stock_query .= " AND cabang_id = ?";
+            }
+            // Only filter approval if column exists
+            if ($has_status_approval) {
+                $stock_query .= " AND status_approval = 'approved'";
+            }
             $stmt = $conn->prepare($stock_query);
-            $stmt->bind_param("ii", $product_id, $cabang_id);
+            if ($has_cabang_id) {
+                $stmt->bind_param("ii", $product_id, $cabang_id);
+            } else {
+                $stmt->bind_param("i", $product_id);
+            }
             $stmt->execute();
             $result = $stmt->get_result();
             
@@ -315,11 +422,41 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
     $user_cabang_id = $user['cabang_id'];
     
     // Get cabang name
-    $stmt = $conn->prepare("SELECT nama_cabang FROM cabang WHERE cabang_id = ?");
-    $stmt->bind_param("i", $user_cabang_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $user_cabang_name = $result->num_rows > 0 ? $result->fetch_assoc()['nama_cabang'] : 'Unknown';
+    // Try to get cabang name from session cabang_id first
+    $user_cabang_name = 'Unknown';
+    if (!empty($user_cabang_id)) {
+        $stmt = $conn->prepare("SELECT nama_cabang FROM cabang WHERE cabang_id = ?");
+        $stmt->bind_param("i", $user_cabang_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $result->num_rows > 0) {
+            $user_cabang_name = $result->fetch_assoc()['nama_cabang'];
+        }
+        $stmt->close();
+    } else {
+        // If session doesn't have cabang_id, try to fetch from users table and update session
+        if (!empty($user['user_id'])) {
+            $stmt = $conn->prepare("SELECT u.cabang_id, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.cabang_id WHERE u.user_id = ?");
+            $stmt->bind_param("i", $user['user_id']);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                if (!empty($row['cabang_id'])) {
+                    $user_cabang_id = $row['cabang_id'];
+                    $user_cabang_name = $row['nama_cabang'] ?? 'Unknown';
+                    // update session so subsequent pages have cabang_id
+                    $_SESSION['cabang_id'] = $user_cabang_id;
+                }
+            }
+            $stmt->close();
+        }
+    }
+
+    // Ensure $cabang_data is defined for non-admin users so templates using it won't error
+    $cabang_data = [
+        ['cabang_id' => $user_cabang_id, 'nama_cabang' => $user_cabang_name]
+    ];
     
     // Get all products grouped by category
     $stock_by_category = [];
@@ -330,14 +467,19 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
         $kategori = $product['kategori'];
         
         // Calculate stock based on approved transactions only
-        $stock_query = "SELECT 
-            COALESCE(SUM(CASE WHEN tipe_transaksi = 'masuk' THEN jumlah ELSE -jumlah END), 0) as total_stock
-            FROM inventory 
-            WHERE produk_id = ? 
-            AND cabang_id = ? 
-            AND status_approval = 'approved'";
+        $stock_query = "SELECT COALESCE(SUM(CASE WHEN tipe_transaksi='masuk' THEN jumlah ELSE -jumlah END),0) AS total_stock FROM inventory WHERE produk_id = ?";
+        if ($has_cabang_id) {
+            $stock_query .= " AND cabang_id = ?";
+        }
+        if ($has_status_approval) {
+            $stock_query .= " AND status_approval = 'approved'";
+        }
         $stmt = $conn->prepare($stock_query);
-        $stmt->bind_param("ii", $product_id, $user_cabang_id);
+        if ($has_cabang_id) {
+            $stmt->bind_param("ii", $product_id, $user_cabang_id);
+        } else {
+            $stmt->bind_param("i", $product_id);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -559,33 +701,33 @@ $conn->close();
             </div>
             
             <nav class="sidebar-nav">
-                <a href="inventory.php?page=dashboard" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=dashboard" class="nav-item">
                     <span class="nav-icon">📊</span>
                     <span>Dashboard</span>
                 </a>
                 <?php if (in_array($user['role'], ['administrator', 'manager', 'finance'])): ?>
-                <a href="inventory.php?page=input_barang" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_barang" class="nav-item">
                     <span class="nav-icon">📥</span>
                     <span>Input Barang</span>
                 </a>
                 <?php endif; ?>
-                <a href="inventory_stock_masuk.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_masuk.php" class="nav-item">
                     <span class="nav-icon">📥</span>
                     <span>Stock Masuk</span>
                 </a>
-                <a href="inventory_stock_keluar.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_keluar.php" class="nav-item">
                     <span class="nav-icon">📤</span>
                     <span>Stock Keluar</span>
                 </a>
-                <a href="inventory.php?page=input_penjualan" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_penjualan" class="nav-item">
                     <span class="nav-icon">💰</span>
                     <span>Input Penjualan</span>
                 </a>
-                <a href="inventory_stock.php" class="nav-item active">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock.php" class="nav-item active">
                     <span class="nav-icon">📦</span>
                     <span>Stock Information</span>
                 </a>
-                <a href="inventory_laporan.php" class="nav-item">
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_laporan.php" class="nav-item">
                     <span class="nav-icon">📋</span>
                     <span>Laporan Penjualan</span>
                 </a>
@@ -695,99 +837,102 @@ $conn->close();
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php 
+                                    <?php
                                     $no = 1;
-                                    if (!empty($stock_by_category_admin)):
-                                        foreach ($stock_by_category_admin as $kategori => $data): 
+                                    if (!empty($stock_by_category_admin)) {
+                                        foreach ($stock_by_category_admin as $kategori => $data) {
                                             $kategori_id = 'kategori-admin-' . preg_replace('/[^a-z0-9]/i', '-', strtolower($kategori));
-                                            
-                                            // Calculate total qty across all cabang
                                             $total_qty_all = array_sum($data['total_cabang_stocks']);
-                                    ?>
-                                    <!-- Category Row -->
-                                    <tr style="background: #ffffff; border-bottom: 2px solid #e9ecef;">
-                                        <td style="padding: 12px; text-align: center; font-weight: 600;"><?php echo $no++; ?></td>
-                                        <td style="padding: 12px;">
-                                            <div style="display: flex; align-items: center; gap: 12px;">
-                                                <span style="color: #f39c12; font-size: 16px;">📁</span>
-                                                <div style="display: flex; align-items: center; gap: 10px;">
-                                                    <div>
-                                                        <strong style="color: #8B1538; font-size: 14px;"><?php echo htmlspecialchars($kategori); ?></strong>
-                                                        <small style="color: #7f8c8d; margin-left: 8px; font-weight: 400;">(<?php echo count($data['products']); ?> produk)</small>
+                                            ?>
+                                            <tr style="background: #ffffff; border-bottom: 2px solid #e9ecef;">
+                                                <td style="padding: 12px; text-align: center; font-weight: 600;"><?php echo $no++; ?></td>
+                                                <td style="padding: 12px;">
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span style="color: #f39c12; font-size: 16px;">📁</span>
+                                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                                            <div>
+                                                                <strong style="color: #8B1538; font-size: 14px;"><?php echo htmlspecialchars($kategori); ?></strong>
+                                                                <small style="color: #7f8c8d; margin-left: 8px; font-weight: 400;">(<?php echo count($data['products']); ?> produk)</small>
+                                                            </div>
+                                                            <button onclick="toggleCategory('<?php echo $kategori_id; ?>')" style="background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%); border: none; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.3s; display: flex; align-items: center; gap: 6px; font-size: 12px; color: white; font-weight: 500; font-family: 'Lexend', sans-serif; box-shadow: 0 2px 8px rgba(139, 21, 56, 0.3);">
+                                                                <span id="icon-<?php echo $kategori_id; ?>" style="font-size: 14px; display: inline-block; transition: transform 0.3s;">▼</span>
+                                                                <span>Detail</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <button onclick="toggleCategory('<?php echo $kategori_id; ?>')" style="background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%); border: none; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.3s; display: flex; align-items: center; gap: 6px; font-size: 12px; color: white; font-weight: 500; font-family: 'Lexend', sans-serif; box-shadow: 0 2px 8px rgba(139, 21, 56, 0.3);">
-                                                        <span id="icon-<?php echo $kategori_id; ?>" style="font-size: 14px; display: inline-block; transition: transform 0.3s;">▼</span>
-                                                        <span>Detail</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <?php foreach ($cabang_data as $cabang): 
-                                            $stock = $data['total_cabang_stocks'][$cabang['cabang_id']] ?? 0;
-                                            $bg_color = '';
-                                            if ($stock == 0) $bg_color = '#fee';
-                                            elseif ($stock < 50) $bg_color = '#fff3cd';
-                                            elseif ($stock < 200) $bg_color = '#d1ecf1';
-                                            else $bg_color = '#d4edda';
+                                                </td>
+                                                <?php foreach ($cabang_data as $cabang) {
+                                                    $stock = $data['total_cabang_stocks'][$cabang['cabang_id']] ?? 0;
+                                                    $bg_color = '';
+                                                    if ($stock == 0) $bg_color = '#fee';
+                                                    elseif ($stock < 50) $bg_color = '#fff3cd';
+                                                    elseif ($stock < 200) $bg_color = '#d1ecf1';
+                                                    else $bg_color = '#d4edda';
+                                                    ?>
+                                                    <td style="background: <?php echo $bg_color; ?>; text-align: center; padding: 12px;">
+                                                        <strong style="font-size: 14px;"><?php echo number_format($stock); ?></strong>
+                                                    </td>
+                                                <?php } ?>
+                                                <td style="padding: 12px; text-align: center; background: #f8f9fa;"><strong style="font-size: 15px; color: #2c3e50;"><?php echo number_format($total_qty_all); ?></strong></td>
+                                                <td style="padding: 12px;">
+                                                    <?php
+                                                    if ($total_qty_all == 0) {
+                                                        echo '<span style="background: #fee; color: #dc3545; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>';
+                                                    } elseif ($total_qty_all < 50) {
+                                                        echo '<span style="background: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>';
+                                                    } elseif ($total_qty_all < 200) {
+                                                        echo '<span style="background: #d1ecf1; color: #0c5460; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>';
+                                                    } else {
+                                                        echo '<span style="background: #d4edda; color: #155724; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>';
+                                                    }
+                                                    ?>
+                                                </td>
+                                            </tr>
+                                            <?php foreach ($data['products'] as $product) { ?>
+                                                <tr class="product-detail <?php echo $kategori_id; ?>" style="display: none; background: #fafbfc; border-bottom: 1px solid #f0f0f0;">
+                                                    <td style="padding: 8px;"></td>
+                                                    <td style="padding: 8px; padding-left: 50px;">
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <span style="color: #adb5bd; font-size: 14px;">└─</span>
+                                                            <span style="color: #495057; font-size: 13px;"><?php echo htmlspecialchars($product['nama_produk']); ?></span>
+                                                        </div>
+                                                    </td>
+                                                    <?php foreach ($cabang_data as $cabang) {
+                                                        $stock = $product['cabang_stocks'][$cabang['cabang_id']] ?? 0;
+                                                        ?>
+                                                        <td style="text-align: center; padding: 8px; font-size: 13px;">
+                                                            <strong><?php echo number_format($stock); ?></strong>
+                                                        </td>
+                                                    <?php } ?>
+                                                    <td style="padding: 8px; text-align: center; background: #f8f9fa;"><strong style="font-size: 13px;"><?php echo number_format($product['total_stock']); ?></strong></td>
+                                                    <td style="padding: 8px;">
+                                                        <?php
+                                                        $ts = $product['total_stock'];
+                                                        if ($ts == 0) {
+                                                            echo '<span style="background: #fee; color: #dc3545; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>';
+                                                        } elseif ($ts < 10) {
+                                                            echo '<span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>';
+                                                        } elseif ($ts < 50) {
+                                                            echo '<span style="background: #d1ecf1; color: #0c5460; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>';
+                                                        } else {
+                                                            echo '<span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>';
+                                                        }
+                                                        ?>
+                                                    </td>
+                                                </tr>
+                                            <?php } // end products foreach
+                                        } // end kategori foreach
+                                    } else {
                                         ?>
-                                            <td style="background: <?php echo $bg_color; ?>; text-align: center; padding: 12px;">
-                                                <strong style="font-size: 14px;"><?php echo number_format($stock); ?></strong>
+                                        <tr>
+                                            <td colspan="<?php echo 4 + count($cabang_data); ?>" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                                                <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                                                <strong>Belum ada data produk</strong>
                                             </td>
-                                        <?php endforeach; ?>
-                                        <td style="padding: 12px; text-align: center; background: #f8f9fa;"><strong style="font-size: 15px; color: #2c3e50;"><?php echo number_format($total_qty_all); ?></strong></td>
-                                        <td style="padding: 12px;">
-                                            <?php if ($total_qty_all == 0): ?>
-                                                <span style="background: #fee; color: #dc3545; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>
-                                            <?php elseif ($total_qty_all < 50): ?>
-                                                <span style="background: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>
-                                            <?php elseif ($total_qty_all < 200): ?>
-                                                <span style="background: #d1ecf1; color: #0c5460; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>
-                                            <?php else: ?>
-                                                <span style="background: #d4edda; color: #155724; padding: 5px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    
-                                    <!-- Product Details (Hidden by default) -->
-                                    <?php foreach ($data['products'] as $product): ?>
-                                    <tr class="product-detail <?php echo $kategori_id; ?>" style="display: none; background: #fafbfc; border-bottom: 1px solid #f0f0f0;">
-                                        <td style="padding: 8px;"></td>
-                                        <td style="padding: 8px; padding-left: 50px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <span style="color: #adb5bd; font-size: 14px;">└─</span>
-                                                <span style="color: #495057; font-size: 13px;"><?php echo htmlspecialchars($product['nama_produk']); ?></span>
-                                            </div>
-                                        </td>
-                                        <?php foreach ($cabang_data as $cabang): 
-                                            $stock = $product['cabang_stocks'][$cabang['cabang_id']] ?? 0;
-                                        ?>
-                                            <td style="text-align: center; padding: 8px; font-size: 13px;">
-                                                <strong><?php echo number_format($stock); ?></strong>
-                                            </td>
-                                        <?php endforeach; ?>
-                                        <td style="padding: 8px; text-align: center; background: #f8f9fa;"><strong style="font-size: 13px;"><?php echo number_format($product['total_stock']); ?></strong></td>
-                                        <td style="padding: 8px;">
-                                            <?php if ($product['total_stock'] == 0): ?>
-                                                <span style="background: #fee; color: #dc3545; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>
-                                            <?php elseif ($product['total_stock'] < 10): ?>
-                                                <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>
-                                            <?php elseif ($product['total_stock'] < 50): ?>
-                                                <span style="background: #d1ecf1; color: #0c5460; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>
-                                            <?php else: ?>
-                                                <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                    <?php endforeach; ?>
-                                    <?php else: ?>
-                                    <tr>
-                                        <td colspan="<?php echo 4 + count($cabang_data); ?>" style="text-align: center; padding: 40px; color: #7f8c8d;">
-                                            <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
-                                            <strong>Belum ada data produk</strong>
-                                        </td>
-                                    </tr>
-                                    <?php endif; ?>
+                                        </tr>
+                                        <?php
+                                    }
+                                    ?>
                                 </tbody>
                             </table>
                             
@@ -863,9 +1008,14 @@ $conn->close();
                                         </td>
                                     </tr>
                                     
-                                    <?php endforeach; ?>
-                                    <?php foreach ($data['products'] as $product): ?>
+                                    <?php 
+                                    // Render product detail rows for this category (non-admin view)
+                                    foreach ($data['products'] as $product): 
+                                        $qty = (int)($product['stock'] ?? 0);
+                                        $nilai = (float)($product['nilai'] ?? 0);
+                                    ?>
                                     <tr class="product-detail <?php echo $kategori_id; ?>" style="display: none; background: #fafbfc; border-bottom: 1px solid #f0f0f0;">
+                                        <td style="padding: 8px;"></td>
                                         <td style="padding: 8px;"></td>
                                         <td style="padding: 8px; padding-left: 50px;">
                                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -873,27 +1023,28 @@ $conn->close();
                                                 <span style="color: #495057; font-size: 13px;"><?php echo htmlspecialchars($product['nama_produk']); ?></span>
                                             </div>
                                         </td>
-                                        <?php foreach ($cabang_data as $cabang): 
-                                            $stock = $product['cabang_stocks'][$cabang['cabang_id']] ?? 0;
-                                        ?>
-                                            <td style="text-align: center; padding: 8px; font-size: 13px;">
-                                                <strong><?php echo number_format($stock); ?></strong>
-                                            </td>
-                                        <?php endforeach; ?>
-                                        <td style="padding: 8px; text-align: center; background: #f8f9fa;"><strong style="font-size: 13px;"><?php echo number_format($product['total_stock']); ?></strong></td>
+                                        <td style="text-align: center; padding: 8px; font-size: 13px;">
+                                            <strong><?php echo number_format($qty); ?></strong>
+                                        </td>
+                                        <td style="padding: 8px;"><strong style="color: #27ae60; font-size: 13px;">Rp <?php echo number_format($nilai, 0, ',', '.'); ?></strong></td>
                                         <td style="padding: 8px;">
-                                            <?php if ($product['total_stock'] == 0): ?>
-                                                <span style="background: #fee; color: #dc3545; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>
-                                            <?php elseif ($product['total_stock'] < 10): ?>
-                                                <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>
-                                            <?php elseif ($product['total_stock'] < 50): ?>
-                                                <span style="background: #d1ecf1; color: #0c5460; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>
-                                            <?php else: ?>
-                                                <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>
-                                            <?php endif; ?>
+                                            <?php
+                                                $status_badge = '';
+                                                if ($qty === 0) {
+                                                    $status_badge = '<span style="background: #fee; color: #dc3545; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">❌ Out</span>';
+                                                } elseif ($qty < 10) {
+                                                    $status_badge = '<span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">⚠️ Low</span>';
+                                                } elseif ($qty < 50) {
+                                                    $status_badge = '<span style="background: #d1ecf1; color: #0c5460; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">📊 Medium</span>';
+                                                } else {
+                                                    $status_badge = '<span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Good</span>';
+                                                }
+                                                echo $status_badge;
+                                            ?>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
+                                    <?php endforeach; // end products foreach ?>
+                                    <?php endforeach; // end categories foreach ?>
                                     <?php else: ?>
                                     <tr>
                                         <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
@@ -1007,8 +1158,8 @@ $conn->close();
                                     <th>Kategori</th>
                                     <th>Tipe</th>
                                     <th>Jumlah</th>
-                                    <th>Stok Sebelum</th>
-                                    <th>Stok Sesudah</th>
+                                    <th>Stok Cabang Sebelum</th>
+                                    <th>Stok Cabang Setelah</th>
                                     <th>Nilai</th>
                                     <th>Referensi</th>
                                     <th>User</th>
@@ -1034,8 +1185,8 @@ $conn->close();
                                             </span>
                                         </td>
                                         <td><strong><?php echo number_format($item['jumlah']); ?></strong></td>
-                                        <td><?php echo number_format($item['stok_sebelum']); ?></td>
-                                        <td><?php echo number_format($item['stok_sesudah']); ?></td>
+                                        <td><?php echo number_format($item['stok_sebelum_cabang']); ?></td>
+                                        <td><?php echo number_format($item['stok_sesudah_cabang']); ?></td>
                                         <td>Rp <?php echo number_format($item['jumlah'] * $item['harga'], 0, ',', '.'); ?></td>
                                         <td>
                                             <?php if ($item['referensi']): ?>

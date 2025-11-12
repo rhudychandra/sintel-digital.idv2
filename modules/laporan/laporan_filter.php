@@ -65,7 +65,7 @@
             <button type="submit" class="btn-filter">
                 🔍 Terapkan Filter
             </button>
-            <a href="inventory_laporan.php" class="btn-reset">
+            <a href="inventory_laporan" class="btn-reset">
                 🔄 Reset Filter
             </a>
         </div>

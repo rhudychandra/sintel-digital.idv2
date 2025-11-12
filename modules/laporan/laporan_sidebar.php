@@ -16,34 +16,34 @@
     </div>
     
     <nav class="sidebar-nav">
-        <a href="inventory.php?page=dashboard" class="nav-item">
+    <a href="inventory?page=dashboard" class="nav-item">
             <span class="nav-icon">📊</span>
             <span>Dashboard</span>
         </a>
-        <a href="inventory.php?page=input_barang" class="nav-item">
+    <a href="inventory?page=input_barang" class="nav-item">
             <span class="nav-icon">📥</span>
             <span>Input Barang</span>
         </a>
-        <a href="inventory_stock_keluar.php" class="nav-item">
+    <a href="inventory_stock_keluar" class="nav-item">
             <span class="nav-icon">📤</span>
             <span>Stock Keluar</span>
         </a>
-        <a href="inventory.php?page=input_penjualan" class="nav-item">
+    <a href="inventory?page=input_penjualan" class="nav-item">
             <span class="nav-icon">💰</span>
             <span>Input Penjualan</span>
         </a>
-        <a href="inventory_stock.php" class="nav-item">
+    <a href="inventory_stock" class="nav-item">
             <span class="nav-icon">📦</span>
             <span>Stock</span>
         </a>
-                <a href="inventory_laporan.php" class="nav-item active">
+                <a href="inventory_laporan" class="nav-item active">
                     <span class="nav-icon">📋</span>
                     <span>Laporan Penjualan</span>
                 </a>
     </nav>
     
     <div class="sidebar-footer">
-        <a href="../../dashboard.php" class="btn-back">← Kembali ke Dashboard</a>
-        <a href="../../logout.php" class="btn-logout">Logout</a>
+    <a href="<?php echo BASE_PATH; ?>/dashboard" class="btn-back">← Kembali ke Dashboard</a>
+    <a href="<?php echo BASE_PATH; ?>/logout" class="btn-logout">Logout</a>
     </div>
 </aside>
