@@ -18,7 +18,7 @@ $page_title = "Finance - Sinar Telkom Dashboard System";
     <link rel="stylesheet" href="../../assets/css/admin-styles.css">
     <link rel="stylesheet" href="../../assets/css/laporan_styles.css">
 </head>
-<body class="submenu-page">
+<body class="submenu-page finance-page">
     <header class="dashboard-header">
         <div style="display: flex; align-items: center; gap: 15px;">
             <img src="../../assets/images/logo_icon.png" alt="Logo" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">

@@ -19,7 +19,7 @@ body {
     min-height: 100vh;
     background-color: #1a1a2e;
     /* Use path relative to this CSS file so it works on any BASE_PATH */
-    background-image: url('../images/bg_login.jpg');
+    background-image: url('../images/bg_login1.jpg');
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
@@ -27,13 +27,13 @@ body {
     overflow: hidden;
 }
 
-/* Dark Overlay */
+/* Dark Overlay - Lighter for more visible background */
 .login-page::before {
     content: '';
     position: absolute;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.35);
     z-index: 0;
 }
 
@@ -313,7 +313,15 @@ body {
     overflow: hidden;
 }
 
-/* Modern Futuristic Polygon Pattern Background */
+/* Dashboard background image - original size centered with gradient fallback */
+.dashboard-page {
+    background: 
+        radial-gradient(ellipse at center, rgba(139, 21, 56, 0.3) 0%, rgba(200, 75, 49, 0.2) 50%, rgba(139, 21, 56, 0.15) 100%),
+        linear-gradient(135deg, #8B1538 0%, #C84B31 50%, #8B1538 100%);
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
 .dashboard-page::before {
     content: '';
     position: absolute;
@@ -321,18 +329,15 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-        linear-gradient(135deg, transparent 0%, transparent 48%, rgba(139, 21, 56, 0.03) 48%, rgba(139, 21, 56, 0.03) 52%, transparent 52%, transparent 100%),
-        linear-gradient(45deg, transparent 0%, transparent 48%, rgba(200, 75, 49, 0.03) 48%, rgba(200, 75, 49, 0.03) 52%, transparent 52%, transparent 100%),
-        linear-gradient(90deg, rgba(139, 21, 56, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(200, 75, 49, 0.02) 1px, transparent 1px);
-    background-size: 80px 80px, 80px 80px, 40px 40px, 40px 40px;
-    background-position: 0 0, 0 0, 0 0, 0 0;
+    background-image: url('../images/bg_dashboard.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: contain;
+    filter: blur(0px);
     z-index: 0;
     pointer-events: none;
 }
 
-/* Animated Geometric Shapes */
 .dashboard-page::after {
     content: '';
     position: absolute;
@@ -340,14 +345,49 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: 
-        radial-gradient(circle at 20% 30%, rgba(139, 21, 56, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(200, 75, 49, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(139, 21, 56, 0.03) 0%, transparent 60%);
+    background: rgba(248, 249, 250, 0.30);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Finance page specific background - original size centered with gradient fallback */
+.finance-page {
+    background: 
+        radial-gradient(ellipse at center, rgba(139, 21, 56, 0.3) 0%, rgba(200, 75, 49, 0.2) 50%, rgba(139, 21, 56, 0.15) 100%),
+        linear-gradient(135deg, #8B1538 0%, #C84B31 50%, #8B1538 100%);
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
+.finance-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('../images/bg_finance.jpg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: contain;
+    filter: blur(0px);
     z-index: 0;
     pointer-events: none;
-    animation: geometricFloat 20s ease-in-out infinite;
 }
+
+.finance-page::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(248, 249, 250, 0.30);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Remove duplicate ::after - already defined above */
 
 @keyframes geometricFloat {
     0%, 100% {
@@ -367,6 +407,8 @@ body {
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 4px 20px rgba(139, 21, 56, 0.3);
+    position: relative;
+    z-index: 100;
 }
 
 .dashboard-header h1 {
@@ -532,11 +574,15 @@ body {
     gap: 40px;
     flex-wrap: wrap;
     max-width: 1200px;
+    position: relative;
+    z-index: 10;
 }
 
 .hexagon-menu {
     text-decoration: none;
     transition: transform 0.3s ease;
+    position: relative;
+    z-index: 10;
 }
 
 .hexagon-menu:hover {
@@ -608,11 +654,15 @@ body {
     gap: 25px;
     max-width: 600px;
     width: 100%;
+    position: relative;
+    z-index: 10;
 }
 
 .rounded-menu-item {
     text-decoration: none;
     transition: transform 0.3s ease;
+    position: relative;
+    z-index: 10;
 }
 
 .rounded-menu-item:hover {
