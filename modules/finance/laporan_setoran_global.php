@@ -46,6 +46,7 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
 </header>
 
 <main class="laporan-global-main">
+    <div class="laporan-container">
     <section class="period-filter">
         <div class="period-info">
             <div class="period-title">📊 Data Real-Time</div>
@@ -54,9 +55,14 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
                 <span class="live-indicator">● LIVE</span>
             </div>
         </div>
-        <button type="button" onclick="refreshData()" class="btn-refresh" id="btn-refresh">
-            <i class="fas fa-sync-alt"></i> Refresh Sekarang
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <a href="validate_stock_consistency.php" target="_blank" class="btn-validation" title="Stock Health Check">
+                <i class="fas fa-check-circle"></i> Validation
+            </a>
+            <button type="button" onclick="refreshData()" class="btn-refresh" id="btn-refresh">
+                <i class="fas fa-sync-alt"></i> Refresh Sekarang
+            </button>
+        </div>
     </section>
 
     <div class="laporan-layout">
@@ -123,7 +129,40 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
                 </ul>
             </div>
 
-            <!-- 3. Voucher Internet -->
+            <!-- 3. Perdana Internet -->
+            <?php 
+                $perdana_inet_total_qty = array_sum(array_column($metrics['perdana_internet'], 'qty'));
+                $perdana_inet_total_nominal = array_sum(array_column($metrics['perdana_internet'], 'nominal'));
+            ?>
+            <div class="laporan-group">
+                <div class="group-header" onclick="toggleGroup('perdana-internet')">
+                    <span class="group-summary">
+                        📱 Perdana Internet
+                        <span class="group-total-summary">
+                            <span class="total-qty">Qty: <?php echo format_qty($perdana_inet_total_qty); ?></span>
+                            <span class="total-nominal"><?php echo format_rupiah($perdana_inet_total_nominal); ?></span>
+                        </span>
+                    </span>
+                    <button class="group-toggle collapsed" type="button">Detail</button>
+                </div>
+                <ul class="group-items" id="group-perdana-internet">
+                    <?php if (!empty($metrics['perdana_internet'])): ?>
+                        <?php foreach($metrics['perdana_internet'] as $item): ?>
+                            <li class="group-item">
+                                <span class="item-label"><?php echo htmlspecialchars($item['nama']); ?></span>
+                                <span class="item-value">
+                                    <small class="qty-badge">Qty: <?php echo format_qty($item['qty']); ?></small>
+                                    <?php echo format_rupiah($item['nominal']); ?>
+                                </span>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li class="group-item"><span class="item-label">Tidak ada data</span></li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+
+            <!-- 4. Voucher Internet -->
             <?php 
                 $voucher_total_qty = array_sum(array_column($metrics['voucher_internet'], 'qty'));
                 $voucher_total_nominal = array_sum(array_column($metrics['voucher_internet'], 'nominal'));
@@ -159,21 +198,21 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
 
         <!-- Right Column -->
         <div class="laporan-column">
-            <!-- 4. Piutang Kantor Pusat -->
+            <!-- 5. Piutang Kantor Pusat -->
             <div class="laporan-group">
                 <div class="group-header">💰 Piutang Kantor Pusat</div>
-                <ul class="group-items" id="group-piutang">
+                <ul class="group-items expanded" id="group-piutang">
                     <li class="group-item highlight-total">
                         <span class="item-label"><strong>Total Piutang Global</strong></span>
                         <span class="item-value total-value" id="piutang-total"><?php echo format_rupiah($metrics['piutang_kantor_pusat']); ?></span>
                     </li>
                 </ul>
                 <div class="group-note">
-                    <small>Termasuk: Stok belum terjual + Penjualan pending/TOP</small>
+                    <small>⚠️ Sementara: Stok + Penjualan pending/TOP. Nanti akan diganti dengan data dari Report Piutang.</small>
                 </div>
             </div>
 
-            <!-- 5. Stock TAP per Cabang -->
+            <!-- 6. Stock TAP per Cabang -->
             <?php 
                 $stock_tap_total = array_sum(array_column($metrics['stock_tap_per_cabang'], 'nominal'));
             ?>
@@ -201,7 +240,7 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
                 </ul>
             </div>
 
-            <!-- 6. TOP (Term Off Payment) -->
+            <!-- 7. TOP (Term Off Payment) -->
             <div class="laporan-group">
                 <div class="group-header">⏳ TOP (Term Off Payment)</div>
                 <ul class="group-items" id="group-top">
@@ -229,15 +268,15 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
         </a>
     </section>
 
-    <div class="info-box" style="margin-top:30px;">
-        <h3>ℹ️ Informasi Halaman</h3>
-        <ul>
+    <div class="info-box" style="margin-top:30px;font-size:11px;">
+        <h3 style="font-size:13px;margin-bottom:8px;">ℹ️ Informasi Halaman</h3>
+        <ul style="line-height:1.6;">
             <li><strong>Auto-refresh:</strong> Data diperbarui otomatis setiap 30 detik</li>
             <li><strong>Sumber Data:</strong> Langsung dari database (real-time)</li>
             <li><strong>LinkAja/Finpay:</strong> Nominal saldo saat ini</li>
             <li><strong>Perdana & VF Segel:</strong> Qty × Harga Pokok per produk</li>
             <li><strong>Voucher Internet:</strong> Qty × Harga Pokok per produk</li>
-            <li><strong>Piutang Kantor Pusat:</strong> Stok belum terjual + Penjualan pending/TOP</li>
+            <li><strong>Piutang Kantor Pusat:</strong> Hasil Report Piutang (Stock, TOP)</li>
             <li><strong>Stock TAP:</strong> Total nominal stok + piutang per cabang</li>
             <li><strong>TOP:</strong> Total transaksi dengan status pembayaran TOP</li>
         </ul>
@@ -310,6 +349,8 @@ function updateUI(metrics) {
     const linkaja_total = metrics.linkaja_finpay ? metrics.linkaja_finpay.reduce((sum, item) => sum + parseFloat(item.nominal || 0), 0) : 0;
     const perdana_total_qty = metrics.perdana_vf_segel ? metrics.perdana_vf_segel.reduce((sum, item) => sum + parseInt(item.qty || 0), 0) : 0;
     const perdana_total_nominal = metrics.perdana_vf_segel ? metrics.perdana_vf_segel.reduce((sum, item) => sum + parseFloat(item.nominal || 0), 0) : 0;
+    const perdana_inet_total_qty = metrics.perdana_internet ? metrics.perdana_internet.reduce((sum, item) => sum + parseInt(item.qty || 0), 0) : 0;
+    const perdana_inet_total_nominal = metrics.perdana_internet ? metrics.perdana_internet.reduce((sum, item) => sum + parseFloat(item.nominal || 0), 0) : 0;
     const voucher_total_qty = metrics.voucher_internet ? metrics.voucher_internet.reduce((sum, item) => sum + parseInt(item.qty || 0), 0) : 0;
     const voucher_total_nominal = metrics.voucher_internet ? metrics.voucher_internet.reduce((sum, item) => sum + parseFloat(item.nominal || 0), 0) : 0;
     const stock_tap_total = metrics.stock_tap_per_cabang ? metrics.stock_tap_per_cabang.reduce((sum, item) => sum + parseFloat(item.nominal || 0), 0) : 0;
@@ -358,7 +399,31 @@ function updateUI(metrics) {
         groupPerdana.innerHTML = '<li class="group-item"><span class="item-label">Tidak ada data</span></li>';
     }
 
-    // 3. Voucher Internet
+    // 3. Perdana Internet
+    const groupPerdanaInet = document.getElementById('group-perdana-internet');
+    const headerPerdanaInet = groupPerdanaInet.previousElementSibling;
+    headerPerdanaInet.querySelector('.total-qty').textContent = 'Qty: ' + formatQty(perdana_inet_total_qty);
+    headerPerdanaInet.querySelector('.total-nominal').textContent = formatRupiah(perdana_inet_total_nominal);
+    
+    groupPerdanaInet.innerHTML = '';
+    if (metrics.perdana_internet && metrics.perdana_internet.length > 0) {
+        metrics.perdana_internet.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'group-item';
+            li.innerHTML = `
+                <span class="item-label">${item.nama}</span>
+                <span class="item-value">
+                    <small class="qty-badge">Qty: ${formatQty(item.qty)}</small>
+                    ${formatRupiah(item.nominal)}
+                </span>
+            `;
+            groupPerdanaInet.appendChild(li);
+        });
+    } else {
+        groupPerdanaInet.innerHTML = '<li class="group-item"><span class="item-label">Tidak ada data</span></li>';
+    }
+
+    // 4. Voucher Internet
     const groupVoucher = document.getElementById('group-voucher-internet');
     const headerVoucher = groupVoucher.previousElementSibling;
     headerVoucher.querySelector('.total-qty').textContent = 'Qty: ' + formatQty(voucher_total_qty);
@@ -382,10 +447,10 @@ function updateUI(metrics) {
         groupVoucher.innerHTML = '<li class="group-item"><span class="item-label">Tidak ada data</span></li>';
     }
 
-    // 4. Piutang Kantor Pusat
+    // 5. Piutang Kantor Pusat
     document.getElementById('piutang-total').textContent = formatRupiah(metrics.piutang_kantor_pusat);
 
-    // 5. Stock TAP per Cabang
+    // 6. Stock TAP per Cabang
     const groupStockTap = document.getElementById('group-stock-tap');
     const headerStockTap = groupStockTap.previousElementSibling;
     headerStockTap.querySelector('.total-nominal').textContent = formatRupiah(stock_tap_total);
