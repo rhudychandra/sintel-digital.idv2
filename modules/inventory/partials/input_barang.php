@@ -57,14 +57,14 @@
         
         <div class="form-group">
             <label>Produk</label>
-            <select name="produk_id" required>
-                <option value="">-- Pilih Produk --</option>
+            <select name="produk_id" required style="font-family: 'Lexend', sans-serif !important;">
+                <option value="" style="font-family: 'Lexend', sans-serif !important;">-- Pilih Produk --</option>
                 <?php 
                 if ($products) {
                     $products->data_seek(0);
                     while ($p = $products->fetch_assoc()): 
                 ?>
-                    <option value="<?php echo $p['produk_id']; ?>">
+                    <option value="<?php echo $p['produk_id']; ?>" style="font-family: 'Lexend', sans-serif !important;">
                         <?php echo htmlspecialchars($p['nama_produk']); ?> (Stok: <?php echo $p['stok']; ?>)
                     </option>
                 <?php endwhile; } ?>
@@ -78,11 +78,11 @@
         
         <div class="form-group">
             <label>Alasan Barang Masuk</label>
-            <select name="alasan_masuk" required>
-                <option value="">-- Pilih Alasan --</option>
-                <option value="DO Cluster">DO Cluster</option>
-                <option value="Supplier">Supplier</option>
-                <option value="Stock Masuk">Stock Masuk</option>
+            <select name="alasan_masuk" required style="font-family: 'Lexend', sans-serif !important;">
+                <option value="" style="font-family: 'Lexend', sans-serif !important;">-- Pilih Alasan --</option>
+                <option value="DO Cluster" style="font-family: 'Lexend', sans-serif !important;">DO Cluster</option>
+                <option value="Supplier" style="font-family: 'Lexend', sans-serif !important;">Supplier</option>
+                <option value="Stock Masuk" style="font-family: 'Lexend', sans-serif !important;">Stock Masuk</option>
                 <option value="Return">Return</option>
             </select>
         </div>

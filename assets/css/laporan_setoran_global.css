@@ -1,4 +1,9 @@
 /* Laporan Setoran Global Page Specific Styles - COMPACT MODE WITH SCROLL */
+/* Force Lexend for all elements */
+* {
+    font-family: 'Lexend', sans-serif !important;
+}
+
 body.laporan-global-page { overflow:hidden; }
 /* Constrain main content to a centered container so the two columns don't stretch too wide */
 .laporan-global-main { height:calc(100vh - 80px); margin: 0; padding: 15px 20px; overflow-y:auto; overflow-x:hidden; }

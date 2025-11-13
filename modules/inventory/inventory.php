@@ -552,6 +552,7 @@ if ($page === 'dashboard') {
     <?php if ($page === 'dashboard'): ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <?php endif; ?>
+    <script src="../../assets/js/force-lexend.js?v=<?php echo time(); ?>"></script>
 </head>
 <body class="admin-page">
     <div class="admin-container">

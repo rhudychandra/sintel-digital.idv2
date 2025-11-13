@@ -1,12 +1,46 @@
 /* Enhanced Laporan Styles */
+/* Force Lexend for all form elements in laporan */
+input, select, textarea, button, option {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+/* Force Lexend for dropdown options specifically */
+select,
+select *,
+select option,
+select optgroup,
+option,
+datalist,
+datalist option,
+.filter-box select,
+.filter-box select option {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+/* Firefox specific dropdown fix for laporan */
+@-moz-document url-prefix() {
+    select, select *, option {
+        font-family: 'Lexend', sans-serif !important;
+    }
+    .filter-box select,
+    .filter-box select option {
+        font-family: 'Lexend', sans-serif !important;
+    }
+}
+
+select:-moz-focusring {
+    font-family: 'Lexend', sans-serif !important;
+}
+
 .badge-paid { 
     background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
     color: #155724; 
     padding: 6px 14px; 
     border-radius: 20px; 
-    font-size: 12px; 
+    font-size: 8px; 
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(21, 87, 36, 0.1);
+    font-family: 'Lexend', sans-serif;
 }
 
 .badge-pending { 
@@ -14,9 +48,10 @@
     color: #856404; 
     padding: 6px 14px; 
     border-radius: 20px; 
-    font-size: 12px; 
+    font-size: 8px; 
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(133, 100, 4, 0.1);
+    font-family: 'Lexend', sans-serif;
 }
 
 .badge-cancelled { 
@@ -24,9 +59,10 @@
     color: #721c24; 
     padding: 6px 14px; 
     border-radius: 20px; 
-    font-size: 12px; 
+    font-size: 8px; 
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(114, 28, 36, 0.1);
+    font-family: 'Lexend', sans-serif;
 }
 
 .filter-box {

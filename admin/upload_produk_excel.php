@@ -141,10 +141,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
                 }
                 $check_stmt->close();
                 
+                // Get HPP from CSV (column 3) or default to 80% of harga
+                $hpp = isset($data[3]) && is_numeric($data[3]) ? floatval($data[3]) : ($harga * 0.80);
+                
+                // Calculate profit margin
+                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                
                 // Insert product
                 try {
-                    $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, harga, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, NULL)");
-                    $stmt->bind_param("sssds", $kode_produk, $nama_produk, $kategori, $harga, $deskripsi);
+                    $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, hpp, harga, profit_margin, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)");
+                    $stmt->bind_param("sssddds", $kode_produk, $nama_produk, $kategori, $hpp, $harga, $profit_margin, $deskripsi);
                     
                     if ($stmt->execute()) {
                         $success_count++;

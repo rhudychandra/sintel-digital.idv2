@@ -10,7 +10,41 @@ body {
     background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
     min-height: 100vh;
     color: #333;
-    font-size: 14px;
+    font-size: 10px;
+}
+
+/* Force Lexend for all inputs, selects, textareas */
+input, select, textarea, button {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+/* Force Lexend for dropdown options */
+select option,
+select optgroup,
+datalist option {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+/* Force Lexend for all dropdown menus */
+.dropdown-menu,
+.dropdown-menu *,
+.dropdown-item {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+/* Firefox specific fixes for dropdown */
+@-moz-document url-prefix() {
+    select, select * {
+        font-family: 'Lexend', sans-serif !important;
+    }
+    option {
+        font-family: 'Lexend', sans-serif !important;
+    }
+}
+
+/* Additional Firefox support */
+select:-moz-focusring {
+    font-family: 'Lexend', sans-serif !important;
 }
 
 /* Login Page Styles */
@@ -256,16 +290,16 @@ body {
 .form-group label {
     font-weight: 500;
     color: #555;
-    font-size: 13px;
+    font-size: 9px;
 }
 
 .form-group input {
     padding: 12px 14px;
     border: 2px solid #e0e0e0;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: 10px;
     transition: all 0.3s ease;
-    font-family: inherit;
+    font-family: 'Lexend', sans-serif;
 }
 
 .form-group input:focus {
@@ -276,7 +310,7 @@ body {
 
 .error-message {
     color: #e74c3c;
-    font-size: 13px;
+    font-size: 9px;
     text-align: center;
     min-height: 20px;
     font-weight: 500;
@@ -288,7 +322,7 @@ body {
     color: white;
     border: none;
     border-radius: 10px;
-    font-size: 15px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -438,7 +472,7 @@ body {
     color: white;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 9px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -446,6 +480,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    font-family: 'Lexend', sans-serif;
 }
 
 .account-button:hover {
@@ -495,9 +530,10 @@ body {
     color: #2c3e50;
     text-decoration: none;
     transition: all 0.3s ease;
-    font-size: 13px;
+    font-size: 9px;
     font-weight: 500;
     border-bottom: 1px solid #f0f0f0;
+    font-family: 'Lexend', sans-serif;
 }
 
 .dropdown-item:last-child {
@@ -510,7 +546,7 @@ body {
 }
 
 .dropdown-icon {
-    font-size: 18px;
+    font-size: 14px;
     width: 24px;
     text-align: center;
 }
@@ -523,12 +559,13 @@ body {
     color: white;
     border: none;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 9px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-block;
+    font-family: 'Lexend', sans-serif;
 }
 
 .back-button {
@@ -631,10 +668,11 @@ body {
 }
 
 .hexagon-content span {
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 600;
     color: #8B1538;
     transition: color 0.3s ease;
+    font-family: 'Lexend', sans-serif;
 }
 
 .hexagon-menu:hover .hexagon-content span {
@@ -686,7 +724,7 @@ body {
 
 .rounded-box h2 {
     color: #8B1538;
-    font-size: 21px;
+    font-size: 17px;
     margin-bottom: 8px;
     font-weight: 600;
     transition: color 0.3s ease;
@@ -694,7 +732,7 @@ body {
 
 .rounded-box p {
     color: #666;
-    font-size: 13px;
+    font-size: 9px;
     transition: color 0.3s ease;
 }
 

@@ -39,9 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Generate kode_produk if not provided
                 $kode_produk = !empty($_POST['kode_produk']) ? $_POST['kode_produk'] : 'PRD-' . time() . '-' . rand(100, 999);
                 
+                // Calculate profit margin
+                $hpp = isset($_POST['hpp']) ? floatval($_POST['hpp']) : 0;
+                $harga = floatval($_POST['harga']);
+                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                
                 // Add new product (cabang_id = NULL for global products)
-                $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, harga, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, NULL)");
-                $stmt->bind_param("sssds", $kode_produk, $_POST['nama_produk'], $kategori, $_POST['harga'], $_POST['deskripsi']);
+                $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, harga, hpp, profit_margin, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)");
+                $stmt->bind_param("sssddds", $kode_produk, $_POST['nama_produk'], $kategori, $_POST['harga'], $hpp, $profit_margin, $_POST['deskripsi']);
                 
                 if ($stmt->execute()) {
                     $_SESSION['message'] = "Produk berhasil ditambahkan dengan kategori: " . htmlspecialchars($kategori);
@@ -68,9 +73,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Use existing kode_produk or generate new one
                 $kode_produk = !empty($_POST['kode_produk']) ? $_POST['kode_produk'] : 'PRD-' . time() . '-' . rand(100, 999);
                 
+                // Calculate profit margin
+                $hpp = isset($_POST['hpp']) ? floatval($_POST['hpp']) : 0;
+                $harga = floatval($_POST['harga']);
+                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                
                 // Update product (keep cabang_id = NULL for global products)
-                $stmt = $conn->prepare("UPDATE produk SET kode_produk=?, nama_produk=?, kategori=?, harga=?, deskripsi=? WHERE produk_id=?");
-                $stmt->bind_param("sssdsi", $kode_produk, $_POST['nama_produk'], $kategori, $_POST['harga'], $_POST['deskripsi'], $_POST['produk_id']);
+                $stmt = $conn->prepare("UPDATE produk SET kode_produk=?, nama_produk=?, kategori=?, hpp=?, harga=?, profit_margin=?, deskripsi=? WHERE produk_id=?");
+                $stmt->bind_param("sssdddsi", $kode_produk, $_POST['nama_produk'], $kategori, $hpp, $harga, $profit_margin, $_POST['deskripsi'], $_POST['produk_id']);
                 
                 if ($stmt->execute()) {
                     $_SESSION['message'] = "Produk berhasil diupdate dengan kategori: " . htmlspecialchars($kategori);
@@ -258,7 +268,9 @@ $conn->close();
                                 <th>ID</th>
                                 <th>Nama Produk</th>
                                 <th>Kategori</th>
-                                <th>Harga</th>
+                                <th>HPP</th>
+                                <th>Harga Jual</th>
+                                <th>Margin</th>
                                 <th>Deskripsi</th>
                                 <th>Aksi</th>
                             </tr>
@@ -269,7 +281,17 @@ $conn->close();
                                 <td><?php echo $product['produk_id']; ?></td>
                                 <td><?php echo htmlspecialchars($product['nama_produk']); ?></td>
                                 <td><?php echo htmlspecialchars($product['kategori']); ?></td>
-                                <td>Rp <?php echo number_format($product['harga'], 0, ',', '.'); ?></td>
+                                <td style="color: #e74c3c; font-weight: 600;">Rp <?php echo number_format($product['hpp'] ?? 0, 0, ',', '.'); ?></td>
+                                <td style="color: #27ae60; font-weight: 600;">Rp <?php echo number_format($product['harga'], 0, ',', '.'); ?></td>
+                                <td>
+                                    <?php 
+                                    $margin = $product['profit_margin'] ?? 0;
+                                    $color = $margin > 20 ? '#27ae60' : ($margin > 10 ? '#f39c12' : '#e74c3c');
+                                    ?>
+                                    <span style="background: <?php echo $color; ?>; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                        <?php echo number_format($margin, 1); ?>%
+                                    </span>
+                                </td>
                                 <td>
                                     <small style="color: #7f8c8d;">
                                         <?php 
@@ -292,7 +314,7 @@ $conn->close();
                             <?php endforeach; ?>
                             <?php if (empty($products)): ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                                <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
                                     Belum ada data produk
                                 </td>
                             </tr>
@@ -336,9 +358,30 @@ $conn->close();
                         </div>
                         
                         <div class="form-group">
-                            <label for="harga">Harga *</label>
+                            <label for="hpp">HPP (Harga Pokok Penjualan) *</label>
+                            <input type="number" id="hpp" name="hpp" required step="0.01" 
+                                   value="<?php echo $edit_data['hpp'] ?? '0'; ?>"
+                                   placeholder="Harga beli dari supplier"
+                                   onchange="calculateMargin()">
+                            <small style="color: #7f8c8d;">Harga modal/beli produk dari supplier</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="harga">Harga Jual *</label>
                             <input type="number" id="harga" name="harga" required step="0.01" 
-                                   value="<?php echo $edit_data['harga'] ?? ''; ?>">
+                                   value="<?php echo $edit_data['harga'] ?? ''; ?>"
+                                   placeholder="Harga jual ke customer"
+                                   onchange="calculateMargin()">
+                            <small style="color: #7f8c8d;">Harga jual ke customer</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Profit Margin</label>
+                            <div id="marginDisplay" style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+                                <span style="font-size: 24px; font-weight: 700; color: #8B1538;" id="marginValue">0%</span>
+                                <br>
+                                <small style="color: #7f8c8d;">Margin keuntungan</small>
+                            </div>
                         </div>
                         
                         <div class="form-group">
@@ -372,8 +415,9 @@ $conn->close();
                     <h4>📋 Petunjuk Upload:</h4>
                     <ul>
                         <li>File harus dalam format CSV (Comma Separated Values)</li>
-                        <li>Kolom wajib: <strong>nama_produk, kategori, harga</strong></li>
+                        <li>Kolom wajib: <strong>nama_produk, kategori, hpp, harga</strong></li>
                         <li>Kolom opsional: <strong>kode_produk, deskripsi</strong></li>
+                        <li>HPP = Harga Pokok Penjualan (harga modal dari supplier)</li>
                         <li>Kategori harus sudah terdaftar di sistem</li>
                         <li>Kode produk akan di-generate otomatis jika kosong</li>
                         <li>Ukuran file maksimal 5MB</li>
@@ -477,6 +521,35 @@ $conn->close();
             if (e.key === 'Escape') {
                 closeUploadModal();
             }
+        });
+        
+        // Calculate profit margin
+        function calculateMargin() {
+            const hpp = parseFloat(document.getElementById('hpp').value) || 0;
+            const harga = parseFloat(document.getElementById('harga').value) || 0;
+            
+            if (hpp > 0 && harga > 0) {
+                const margin = ((harga - hpp) / hpp) * 100;
+                const marginElement = document.getElementById('marginValue');
+                marginElement.textContent = margin.toFixed(1) + '%';
+                
+                // Color based on margin
+                if (margin > 20) {
+                    marginElement.style.color = '#27ae60'; // Green
+                } else if (margin > 10) {
+                    marginElement.style.color = '#f39c12'; // Orange
+                } else {
+                    marginElement.style.color = '#e74c3c'; // Red
+                }
+            } else {
+                document.getElementById('marginValue').textContent = '0%';
+                document.getElementById('marginValue').style.color = '#8B1538';
+            }
+        }
+        
+        // Calculate margin on page load if editing
+        window.addEventListener('load', function() {
+            calculateMargin();
         });
     </script>
 </body>
