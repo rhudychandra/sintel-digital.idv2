@@ -388,50 +388,50 @@ $conn->close();
 </head>
 <body class="admin-page">
     <div class="admin-container">
-        <!-- Sidebar -->
-        <aside class="admin-sidebar">
+        <!-- Sidebar (Standardized) -->
+        <aside class="admin-sidebar" style="width:340px;">
             <div class="sidebar-header">
-                <h2>Inventory</h2>
-                <p><?php echo htmlspecialchars($user['full_name']); ?></p>
+                <div style="display:flex; flex-direction:column; gap:15px; align-items:stretch;">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <div style="flex-shrink:0;">
+                            <img src="../../assets/images/logo_icon.png" alt="Logo" style="width:60px; height:60px; border-radius:10px; object-fit:contain; background:rgba(255,255,255,0.1); padding:6px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                        </div>
+                        <h2 style="margin:0; font-size:20px; font-weight:700; color:#fff; letter-spacing:.5px;">INVENTORY</h2>
+                    </div>
+                    <div style="background:linear-gradient(135deg, rgba(255,255,255,.25) 0%, rgba(255,255,255,.15) 100%); padding:12px 14px; border-radius:10px; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.2);">
+                        <p style="margin:0 0 4px 0; font-weight:600; font-size:13px; color:#fff; line-height:1.4; word-break:break-word;">&nbsp;<?php echo htmlspecialchars($user['full_name']); ?></p>
+                        <p style="margin:0; font-size:11px; color:rgba(255,255,255,.85); font-weight:400; text-transform:capitalize; line-height:1.3;"><?php echo ucfirst($user['role']); ?></p>
+                    </div>
+                </div>
             </div>
-            
             <nav class="sidebar-nav">
-                <a href="inventory.php?page=dashboard" class="nav-item">
-                    <span class="nav-icon">📊</span>
-                    <span>Dashboard</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=dashboard" class="nav-item">
+                    <span class="nav-icon">📊</span><span>Dashboard</span>
                 </a>
-                <?php if (in_array($user['role'], ['administrator', 'manager', 'finance'])): ?>
-                <a href="inventory.php?page=input_barang" class="nav-item">
-                    <span class="nav-icon">📥</span>
-                    <span>Input Barang</span>
+                <?php if (in_array($user['role'], ['administrator','manager','finance'])): ?>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_barang" class="nav-item">
+                    <span class="nav-icon">📥</span><span>Input Barang</span>
                 </a>
                 <?php endif; ?>
-                <a href="inventory_stock_masuk.php" class="nav-item">
-                    <span class="nav-icon">📥</span>
-                    <span>Stock Masuk</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_masuk.php" class="nav-item">
+                    <span class="nav-icon">📥</span><span>Stock Masuk</span>
                 </a>
-                <a href="inventory_stock_keluar.php" class="nav-item active">
-                    <span class="nav-icon">📤</span>
-                    <span>Stock Keluar</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock_keluar.php" class="nav-item active">
+                    <span class="nav-icon">📤</span><span>Stock Keluar</span>
                 </a>
-                <a href="inventory.php?page=input_penjualan" class="nav-item">
-                    <span class="nav-icon">💰</span>
-                    <span>Input Penjualan</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=input_penjualan" class="nav-item">
+                    <span class="nav-icon">💰</span><span>Input Penjualan</span>
                 </a>
-                <a href="input_penjualan_outlet.php" class="nav-item">
-                    <span class="nav-icon">🏪</span>
-                    <span>Input Penjualan Per Outlet</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/input_penjualan_outlet.php" class="nav-item">
+                    <span class="nav-icon">🏪</span><span>Input Penjualan Per Outlet</span>
                 </a>
-                <a href="inventory_stock.php" class="nav-item">
-                    <span class="nav-icon">📦</span>
-                    <span>Stock Information</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock.php" class="nav-item">
+                    <span class="nav-icon">📦</span><span>Stock</span>
                 </a>
-                <a href="inventory_laporan.php" class="nav-item">
-                    <span class="nav-icon">📋</span>
-                    <span>Laporan Penjualan</span>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_laporan.php" class="nav-item">
+                    <span class="nav-icon">📋</span><span>Laporan Penjualan</span>
                 </a>
             </nav>
-            
             <div class="sidebar-footer">
                 <a href="../../dashboard.php" class="btn-back">← Kembali ke Dashboard</a>
                 <a href="../../logout.php" class="btn-logout">Logout</a>

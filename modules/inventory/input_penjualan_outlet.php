@@ -8,6 +8,278 @@ $conn = getDBConnection();
 $message = '';
 $error = '';
 
+// ===== EXPORT CSV FEATURE =====
+// Query & stream CSV based on optional filters: tanggal, sales_force_id
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    // Build query
+    // Base select includes cabang (if any), sales force, product, outlet, IDs, qty, nominal, keterangan, author
+    $sql = "SELECT 
+                po.tanggal,
+                COALESCE(c.nama_cabang, cr.nama_cabang) AS nama_cabang,
+                r.nama_reseller,
+                p.nama_produk,
+                o.nama_outlet,
+                o.id_digipos,
+                o.nik_ktp,
+                po.qty,
+                po.nominal,
+                po.keterangan,
+                u.username AS author
+            FROM penjualan_outlet po
+            JOIN reseller r ON po.sales_force_id = r.reseller_id
+            JOIN produk p ON po.produk_id = p.produk_id
+            JOIN outlet o ON po.outlet_id = o.outlet_id
+            LEFT JOIN cabang c ON po.cabang_id = c.cabang_id
+            LEFT JOIN cabang cr ON r.cabang_id = cr.cabang_id
+            LEFT JOIN users u ON po.created_by = u.user_id";
+
+    $conditions = [];
+    $params = [];
+    $types = '';
+
+    // Filter tanggal (support range)
+    $start_date = $_GET['start_date'] ?? '';
+    $end_date = $_GET['end_date'] ?? '';
+    if (!empty($start_date) && !empty($end_date)) {
+        $conditions[] = 'po.tanggal BETWEEN ? AND ?';
+        $params[] = $start_date;
+        $params[] = $end_date;
+        $types .= 'ss';
+    } elseif (!empty($start_date)) {
+        $conditions[] = 'po.tanggal >= ?';
+        $params[] = $start_date;
+        $types .= 's';
+    } elseif (!empty($_GET['tanggal'])) {
+        $conditions[] = 'po.tanggal = ?';
+        $params[] = $_GET['tanggal'];
+        $types .= 's';
+    } elseif (!empty($end_date)) {
+        $conditions[] = 'po.tanggal <= ?';
+        $params[] = $end_date;
+        $types .= 's';
+    }
+
+    // Filter sales force
+    if (!empty($_GET['sales_force_id'])) {
+        $conditions[] = 'po.sales_force_id = ?';
+        $params[] = (int)$_GET['sales_force_id'];
+        $types .= 'i';
+    }
+
+    // Non administrator/manager restrict by user's cabang
+    if (!in_array($user['role'], ['administrator', 'manager']) && !empty($user['cabang_id'])) {
+        // Include records with explicit cabang_id or legacy NULL where reseller.cabang_id matches
+        $conditions[] = '(po.cabang_id = ? OR (po.cabang_id IS NULL AND r.cabang_id = ?))';
+        $params[] = (int)$user['cabang_id'];
+        $params[] = (int)$user['cabang_id'];
+        $types .= 'ii';
+    }
+
+    if ($conditions) {
+        $sql .= ' WHERE ' . implode(' AND ', $conditions);
+    }
+
+    $sql .= ' ORDER BY po.tanggal DESC, r.nama_reseller, p.nama_produk, o.nama_outlet';
+
+    // Prepare & execute
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Gagal menyiapkan query export.';
+        exit;
+    }
+    if ($params) {
+        // Bind by reference for dynamic params
+        $bindParams = array_merge([$types], $params);
+        foreach ($bindParams as $k => $v) { $bindParams[$k] = $bindParams[$k]; }
+        $refParams = [];
+        foreach ($bindParams as $key => &$value) { $refParams[$key] = &$value; }
+        call_user_func_array([$stmt, 'bind_param'], $refParams);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    // Output headers
+    $filenameParts = ['penjualan_outlet'];
+    if (!empty($_GET['tanggal'])) $filenameParts[] = str_replace('-', '', $_GET['tanggal']);
+    if (!empty($_GET['sales_force_id'])) $filenameParts[] = 'sf' . (int)$_GET['sales_force_id'];
+    $filename = implode('_', $filenameParts) . '_' . date('Ymd_His') . '.csv';
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=' . $filename);
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $output = fopen('php://output', 'w');
+    // UTF-8 BOM for Excel compatibility
+    fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+    fputcsv($output, ['Tanggal', 'Cabang', 'Sales Force', 'Produk', 'Outlet', 'ID Digipos', 'NIK KTP', 'Qty', 'Nominal', 'Keterangan', 'Author']);
+
+    $totalQty = 0;
+    $totalNominal = 0.0;
+
+    while ($row = $result->fetch_assoc()) {
+        $csvRow = [
+            $row['tanggal'],
+            $row['nama_cabang'] ?? '-',
+            $row['nama_reseller'] ?? '-',
+            $row['nama_produk'] ?? '-',
+            $row['nama_outlet'] ?? '-',
+            $row['id_digipos'] ?? '-',
+            $row['nik_ktp'] ?? '-',
+            $row['qty'],
+            $row['nominal'],
+            $row['keterangan'] ?? '-',
+            $row['author'] ?? '-'
+        ];
+        fputcsv($output, $csvRow);
+        $totalQty += (int)$row['qty'];
+        $totalNominal += (float)$row['nominal'];
+    }
+
+    // Summary line
+    fputcsv($output, ['TOTAL', '', '', '', '', '', '', $totalQty, $totalNominal, '', '']);
+
+    fclose($output);
+    $stmt->close();
+    $conn->close();
+    exit; // Stop normal page rendering
+}
+// ===== END EXPORT CSV FEATURE =====
+
+// ===== EXPORT EXCEL (XLS) FEATURE =====
+if (isset($_GET['export']) && $_GET['export'] === 'xlsx') {
+    // Build same query as CSV
+    $sql = "SELECT 
+                po.tanggal,
+                COALESCE(c.nama_cabang, cr.nama_cabang) AS nama_cabang,
+                r.nama_reseller,
+                p.nama_produk,
+                o.nama_outlet,
+                o.id_digipos,
+                o.nik_ktp,
+                po.qty,
+                po.nominal,
+                po.keterangan,
+                u.username AS author
+            FROM penjualan_outlet po
+            JOIN reseller r ON po.sales_force_id = r.reseller_id
+            JOIN produk p ON po.produk_id = p.produk_id
+            JOIN outlet o ON po.outlet_id = o.outlet_id
+            LEFT JOIN cabang c ON po.cabang_id = c.cabang_id
+            LEFT JOIN cabang cr ON r.cabang_id = cr.cabang_id
+            LEFT JOIN users u ON po.created_by = u.user_id";
+
+    $conditions = [];
+    $params = [];
+    $types = '';
+
+    $start_date = $_GET['start_date'] ?? '';
+    $end_date = $_GET['end_date'] ?? '';
+    if (!empty($start_date) && !empty($end_date)) {
+        $conditions[] = 'po.tanggal BETWEEN ? AND ?';
+        $params[] = $start_date;
+        $params[] = $end_date;
+        $types .= 'ss';
+    } elseif (!empty($start_date)) {
+        $conditions[] = 'po.tanggal >= ?';
+        $params[] = $start_date;
+        $types .= 's';
+    } elseif (!empty($_GET['tanggal'])) {
+        $conditions[] = 'po.tanggal = ?';
+        $params[] = $_GET['tanggal'];
+        $types .= 's';
+    } elseif (!empty($end_date)) {
+        $conditions[] = 'po.tanggal <= ?';
+        $params[] = $end_date;
+        $types .= 's';
+    }
+    if (!empty($_GET['sales_force_id'])) {
+        $conditions[] = 'po.sales_force_id = ?';
+        $params[] = (int)$_GET['sales_force_id'];
+        $types .= 'i';
+    }
+    if (!in_array($user['role'], ['administrator', 'manager']) && !empty($user['cabang_id'])) {
+        $conditions[] = '(po.cabang_id = ? OR (po.cabang_id IS NULL AND r.cabang_id = ?))';
+        $params[] = (int)$user['cabang_id'];
+        $params[] = (int)$user['cabang_id'];
+        $types .= 'ii';
+    }
+    if ($conditions) {
+        $sql .= ' WHERE ' . implode(' AND ', $conditions);
+    }
+    $sql .= ' ORDER BY po.tanggal DESC, r.nama_reseller, p.nama_produk, o.nama_outlet';
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Gagal menyiapkan query export.';
+        exit;
+    }
+    if ($params) {
+        $bindParams = array_merge([$types], $params);
+        foreach ($bindParams as $k => $v) { $bindParams[$k] = $bindParams[$k]; }
+        $refParams = [];
+        foreach ($bindParams as $key => &$value) { $refParams[$key] = &$value; }
+        call_user_func_array([$stmt, 'bind_param'], $refParams);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $filenameParts = ['penjualan_outlet'];
+    if (!empty($_GET['tanggal'])) $filenameParts[] = str_replace('-', '', $_GET['tanggal']);
+    if (!empty($_GET['sales_force_id'])) $filenameParts[] = 'sf' . (int)$_GET['sales_force_id'];
+    $filename = implode('_', $filenameParts) . '_' . date('Ymd_His') . '.xls';
+
+    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+    header('Content-Disposition: attachment; filename=' . $filename);
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    // Output as simple HTML table compatible with Excel
+    echo "\xEF\xBB\xBF"; // UTF-8 BOM
+    echo '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />';
+    echo '<table border="1">';
+    echo '<thead><tr>';
+    $headers = ['Tanggal','Cabang','Sales Force','Produk','Outlet','ID Digipos','NIK KTP','Qty','Nominal','Keterangan','Author'];
+    foreach ($headers as $h) echo '<th>'.htmlspecialchars($h).'</th>';
+    echo '</tr></thead><tbody>';
+
+    $totalQty = 0; $totalNominal = 0.0;
+    while ($row = $result->fetch_assoc()) {
+        echo '<tr>';
+        echo '<td>'.htmlspecialchars($row['tanggal']).'</td>';
+        echo '<td>'.htmlspecialchars($row['nama_cabang'] ?? '-').'</td>';
+        echo '<td>'.htmlspecialchars($row['nama_reseller'] ?? '-').'</td>';
+        echo '<td>'.htmlspecialchars($row['nama_produk'] ?? '-').'</td>';
+        echo '<td>'.htmlspecialchars($row['nama_outlet'] ?? '-').'</td>';
+        // Force text format for ID/NIK to avoid scientific notation in Excel
+        $idDigipos = $row['id_digipos'] ?? '-';
+        $nik = $row['nik_ktp'] ?? '-';
+        echo '<td style="mso-number-format:\'@\';">'.htmlspecialchars($idDigipos).'</td>';
+        echo '<td style="mso-number-format:\'@\';">'.htmlspecialchars($nik).'</td>';
+        echo '<td>'.(int)$row['qty'].'</td>';
+        echo '<td>'.(float)$row['nominal'].'</td>';
+        echo '<td>'.htmlspecialchars($row['keterangan'] ?? '-').'</td>';
+        echo '<td>'.htmlspecialchars($row['author'] ?? '-').'</td>';
+        echo '</tr>';
+        $totalQty += (int)$row['qty'];
+        $totalNominal += (float)$row['nominal'];
+    }
+    echo '<tr>';
+    echo '<td><strong>TOTAL</strong></td><td></td><td></td><td></td><td></td><td></td><td></td>';
+    echo '<td><strong>'.$totalQty.'</strong></td>';
+    echo '<td><strong>'.$totalNominal.'</strong></td>';
+    echo '<td></td><td></td>';
+    echo '</tr>';
+    echo '</tbody></table>';
+
+    $stmt->close();
+    $conn->close();
+    exit;
+}
+// ===== END EXPORT EXCEL (XLS) FEATURE =====
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit_penjualan_outlet') {
     $tanggal = $_POST['tanggal'];
@@ -223,7 +495,7 @@ $conn->close();
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            margin-top: 20px;
+            margin-top: 0;
         }
         
         .summary-table {
@@ -374,6 +646,44 @@ $conn->close();
             color: #7f8c8d;
             font-style: italic;
         }
+
+        /* Icon/Button polish */
+        .admin-main i.fa-solid {
+            filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
+        }
+        .btn-primary, .btn-add-row, .btn-add-djp, .btn-submit {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: transform .08s ease, box-shadow .2s ease;
+        }
+        .btn-primary:hover, .btn-add-row:hover, .btn-add-djp:hover, .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+        }
+
+        /* Generic Popup Modal */
+        .popup-modal .modal-content {
+            max-width: 520px;
+        }
+        /* Popup fade */
+        #popupModal { transition: opacity .18s ease; opacity:0; }
+        #popupModal.active { opacity:1; }
+        .modal-header .modal-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px; border-radius: 50%; margin-right: 10px;
+        }
+        .modal-header.warning .modal-icon { background:#fff3cd; color:#856404; }
+        .modal-header.danger .modal-icon { background:#fde2e1; color:#c0392b; }
+        .modal-header.success .modal-icon { background:#eafaf1; color:#27ae60; }
+        .modal-header.info .modal-icon { background:#e8f4fd; color:#2980b9; }
+        .modal-actions { margin-top: 16px; display:flex; gap:10px; justify-content:flex-end; }
+        .btn { padding:8px 14px; border-radius:6px; border:0; cursor:pointer; font-size:12px; }
+        .btn-outline { background:#fff; border:1px solid #ccd1d1; }
+        .btn-danger { background:#e74c3c; color:#fff; }
+        .btn-success { background:#27ae60; color:#fff; }
+        .btn-info { background:#3498db; color:#fff; }
+        /* Form actions alignment */
+        .form-actions { display:flex; justify-content:flex-end; margin: 20px 0 50px; }
+        @media (max-width:700px){ .form-actions { justify-content:center; } }
     </style>
 </head>
 <body class="admin-page">
@@ -452,23 +762,27 @@ $conn->close();
             
             <?php if ($message): ?>
             <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <?php echo $message; ?>
+                <i class="fa-solid fa-check-circle"></i> <?php echo $message; ?>
             </div>
             <?php endif; ?>
             
             <?php if ($error): ?>
             <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+                <i class="fa-solid fa-exclamation-circle"></i> <?php echo $error; ?>
             </div>
             <?php endif; ?>
             
             <!-- Filter Section -->
             <div class="filter-section">
-                <h3><i class="fas fa-filter"></i> Filter Data</h3>
+                <h3><i class="fa-solid fa-filter"></i> Filter Data</h3>
                 <div class="filter-row">
                     <div class="form-group">
                         <label for="filter_tanggal">Tanggal *</label>
                         <input type="date" id="filter_tanggal" value="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="filter_tanggal_end">Tanggal Akhir (opsional)</label>
+                        <input type="date" id="filter_tanggal_end" value="">
                     </div>
                     
                     <?php if (in_array($user['role'], ['administrator', 'manager'])): ?>
@@ -498,7 +812,7 @@ $conn->close();
                     
                     <div class="form-group" style="display: flex; align-items: flex-end;">
                         <button type="button" class="btn-primary" onclick="loadSalesSummary()">
-                            <i class="fas fa-search"></i> Tampilkan Data
+                            <i class="fa-solid fa-search"></i> Tampilkan Data
                         </button>
                     </div>
                 </div>
@@ -506,7 +820,7 @@ $conn->close();
             
             <!-- Table Penjualan Sales Force -->
             <div class="table-section" id="sales-summary-section" style="display: none;">
-                <h3><i class="fas fa-chart-line"></i> Penjualan Sales Force</h3>
+                <h3><i class="fa-solid fa-chart-line"></i> Penjualan Sales Force</h3>
                 <div class="summary-table" id="sales-summary-content"></div>
             </div>
             
@@ -520,7 +834,7 @@ $conn->close();
                 <?php endif; ?>
                 
                 <div class="table-section">
-                    <h3><i class="fas fa-store"></i> Input Penjualan Per Outlet</h3>
+                    <h3><i class="fa-solid fa-store"></i> Input Penjualan Per Outlet</h3>
                     <table class="input-table" id="outlet-table">
                         <thead>
                             <tr>
@@ -539,27 +853,43 @@ $conn->close();
                     </table>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button type="button" class="btn-add-row" onclick="addOutletRow()">
-                            <i class="fas fa-plus"></i> Tambah Baris
+                            <i class="fa-solid fa-plus"></i> Tambah Baris
                         </button>
                         <button type="button" class="btn-add-djp" onclick="openDJPModal()">
-                            <i class="fas fa-search"></i> Add DJP Outlet (Cross Selling)
+                            <i class="fa-solid fa-search"></i> Add DJP Outlet (Cross Selling)
                         </button>
                     </div>
                 </div>
                 
                 <div class="alert-warning" id="validation-message" style="display: none;"></div>
                 
-                <button type="submit" class="btn-submit" onclick="return validateSubmit()" style="margin-bottom: 40px;">
-                    <i class="fas fa-save"></i> Submit Penjualan
-                </button>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit" onclick="return validateSubmit()">
+                        <i class="fa-solid fa-save"></i> Submit Penjualan
+                    </button>
+                </div>
             </form>
             
             <!-- Report Penjualan Per Outlet -->
             <div class="table-section" id="history-section" style="margin-top: 40px;">
-                <h3><i class="fas fa-file-alt"></i> History Input Penjualan Outlet<?php if (!in_array($user['role'], ['administrator', 'manager'])): ?> - <?php echo htmlspecialchars($user_cabang_name); ?><?php endif; ?></h3>
+                <h3><i class="fa-solid fa-file-alt"></i> History Input Penjualan Outlet<?php if (!in_array($user['role'], ['administrator', 'manager'])): ?> - <?php echo htmlspecialchars($user_cabang_name); ?><?php endif; ?></h3>
                 
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin:0 0 12px 0;">
+                    <button type="button" class="btn-primary" onclick="exportFilteredCSV()" style="display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-download"></i> Export Filter (CSV)
+                    </button>
+                    <button type="button" class="btn-primary" onclick="exportAllCSV()" style="display:flex; align-items:center; gap:6px; background:#34495e;">
+                        <i class="fa-solid fa-file-export"></i> Export Semua (CSV)
+                    </button>
+                    <button type="button" class="btn-primary" onclick="exportFilteredXLSX()" style="display:flex; align-items:center; gap:6px; background:#1abc9c;">
+                        <i class="fa-solid fa-file-excel"></i> Export Filter (Excel)
+                    </button>
+                    <button type="button" class="btn-primary" onclick="exportAllXLSX()" style="display:flex; align-items:center; gap:6px; background:#16a085;">
+                        <i class="fa-solid fa-file-excel"></i> Export Semua (Excel)
+                    </button>
+                </div>
                 <div id="report-content">
-                    <p style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
+                    <p style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</p>
                 </div>
             </div>
             </div>
@@ -570,7 +900,7 @@ $conn->close();
     <div class="modal-overlay" id="djpModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-search"></i> Search DJP Outlet</h3>
+                <h3><i class="fa-solid fa-search"></i> Search DJP Outlet</h3>
                 <button class="modal-close" onclick="closeDJPModal()">&times;</button>
             </div>
             <div class="search-box">
@@ -578,13 +908,28 @@ $conn->close();
             </div>
             <div class="outlet-list" id="outlet-results">
                 <div class="no-results">
-                    <i class="fas fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i>
+                    <i class="fa-solid fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i>
                     <p>Ketik minimal 2 karakter untuk mulai search</p>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Generic Popup Modal -->
+    <div class="modal-overlay popup-modal" id="popupModal">
+        <div class="modal-content">
+            <div class="modal-header info" id="popupHeader">
+                <div class="modal-icon"><i class="fa-solid fa-circle-info"></i></div>
+                <h3 id="popupTitle" style="margin:0">Informasi</h3>
+                <button class="modal-close" onclick="closePopup()">&times;</button>
+            </div>
+            <div id="popupBody" style="font-size:13px; line-height:1.5;"></div>
+            <div class="modal-actions" id="popupActions">
+                <button class="btn btn-info" onclick="closePopup()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const productsData = <?php echo json_encode($products); ?>;
         const outletsData = <?php echo json_encode($outlets); ?>;
@@ -649,7 +994,7 @@ $conn->close();
             const salesForceId = document.getElementById('filter_sales_force').value;
             
             if (!tanggal || !salesForceId) {
-                alert('Harap pilih tanggal dan sales force!');
+                showPopup({title:'Validasi', message:'Harap pilih tanggal dan sales force!', type:'warning'});
                 return;
             }
             
@@ -686,7 +1031,7 @@ $conn->close();
                     data = JSON.parse(responseText);
                 } catch (e) {
                     console.error('JSON parse error:', e);
-                    alert('Error: Response bukan JSON valid. Check console untuk detail.');
+                    showPopup({title:'Error', message:'Response bukan JSON valid. Mohon cek console untuk detail.', type:'danger'});
                     return;
                 }
                 
@@ -720,13 +1065,13 @@ $conn->close();
                     document.getElementById('history-section').style.display = 'block';
                     loadFullReport();
                 } else {
-                    alert(data.message || 'Tidak ada data penjualan untuk sales force ini pada tanggal tersebut');
+                    showPopup({title:'Tidak Ada Data', message:(data.message || 'Tidak ada data penjualan untuk sales force ini pada tanggal tersebut'), type:'info'});
                     document.getElementById('sales-summary-section').style.display = 'none';
                     document.getElementById('outlet-tbody').innerHTML = '';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat mengambil data');
+                showPopup({title:'Error', message:'Terjadi kesalahan saat mengambil data', type:'danger'});
             }
         }
         
@@ -818,7 +1163,7 @@ $conn->close();
             }
             
             html += '<td><input type="text" name="keterangan[]" placeholder="' + (isDJP ? 'DJP - Cross Selling' : 'Opsional') + '"></td>';
-            html += '<td><button type="button" class="btn-delete-row" onclick="deleteRow(' + rowCounter + ')"><i class="fas fa-trash"></i> Hapus</button></td>';
+            html += '<td><button type="button" class="btn-delete-row" onclick="deleteRow(' + rowCounter + ')"><i class="fa-solid fa-trash"></i> Hapus</button></td>';
             
             row.innerHTML = html;
             tbody.appendChild(row);
@@ -874,7 +1219,7 @@ $conn->close();
             const rows = document.querySelectorAll('#outlet-tbody tr');
             
             if (rows.length === 0) {
-                alert('Harap tambahkan minimal 1 data outlet!');
+                showPopup({title:'Validasi', message:'Harap tambahkan minimal 1 data outlet!', type:'warning'});
                 return false;
             }
             
@@ -909,15 +1254,18 @@ $conn->close();
             }
             
             if (errors.length > 0) {
-                const msg = 'Total qty per produk tidak cocok!\n\n' + errors.join('\n');
-                alert(msg);
-                document.getElementById('validation-message').innerHTML = '<strong>Validasi Gagal:</strong><br>' + errors.join('<br>');
-                document.getElementById('validation-message').style.display = 'block';
+                const msg = '<div>Total qty per produk tidak cocok!</div><div style="margin-top:8px; font-family:monospace; white-space:pre-line;">' + errors.join('\n') + '</div>';
+                showPopup({title:'Validasi Gagal', message:msg, type:'danger'});
+                document.getElementById('validation-message').style.display = 'none';
                 return false;
             }
             
             document.getElementById('validation-message').style.display = 'none';
-            return confirm('Apakah data sudah benar?');
+            // Use popup confirm instead of native confirm
+            showConfirm('Konfirmasi', 'Apakah data sudah benar?', function(){
+                document.getElementById('form-penjualan-outlet').submit();
+            });
+            return false;
         }
         
         async function loadReport() {
@@ -940,7 +1288,7 @@ $conn->close();
                 
                 if (data.success && data.data.length > 0) {
                     let html = '<table class="input-table"><thead><tr>';
-                    html += '<th>Tanggal</th><th>Sales Force</th><th>Produk</th><th>Outlet</th><th>Qty</th><th>Nominal</th><th>Keterangan</th>';
+                    html += '<th>Tanggal</th><th>Sales Force</th><th>Produk</th><th>Outlet</th><th>ID Digipos</th><th>NIK KTP</th><th>Qty</th><th>Nominal</th><th>Keterangan</th>';
                     html += '</tr></thead><tbody>';
                     
                     let totalQty = 0;
@@ -952,6 +1300,8 @@ $conn->close();
                         html += '<td>' + item.nama_reseller + '</td>';
                         html += '<td>' + item.nama_produk + '</td>';
                         html += '<td>' + item.nama_outlet + '</td>';
+                        html += '<td>' + (item.id_digipos || '-') + '</td>';
+                        html += '<td>' + (item.nik_ktp || '-') + '</td>';
                         html += '<td>' + item.qty + '</td>';
                         html += '<td>Rp ' + parseFloat(item.nominal).toLocaleString('id-ID') + '</td>';
                         html += '<td>' + (item.keterangan || '-') + '</td>';
@@ -962,7 +1312,7 @@ $conn->close();
                     });
                     
                     html += '<tr style="background: #f8f9fa; font-weight: bold;">';
-                    html += '<td colspan="4">TOTAL</td>';
+                    html += '<td colspan="6">TOTAL</td>';
                     html += '<td>' + totalQty + '</td>';
                     html += '<td>Rp ' + totalNominal.toLocaleString('id-ID') + '</td>';
                     html += '<td></td>';
@@ -982,18 +1332,18 @@ $conn->close();
         function openDJPModal() {
             const salesForceId = document.getElementById('filter_sales_force').value;
             if (!salesForceId) {
-                alert('Harap pilih Sales Force terlebih dahulu!');
+                showPopup({title:'Validasi', message:'Harap pilih Sales Force terlebih dahulu!', type:'warning'});
                 return;
             }
             
             if (Object.keys(salesProductsData).length === 0) {
-                alert('Harap klik "Tampilkan Data" terlebih dahulu untuk load data penjualan!');
+                showPopup({title:'Validasi', message:'Harap klik "Tampilkan Data" terlebih dahulu untuk memuat data penjualan!', type:'warning'});
                 return;
             }
             
             document.getElementById('djpModal').style.display = 'flex';
             document.getElementById('outlet-search').value = '';
-            document.getElementById('outlet-results').innerHTML = '<div class="no-results"><i class="fas fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i><p>Ketik minimal 2 karakter untuk mulai search</p></div>';
+            document.getElementById('outlet-results').innerHTML = '<div class="no-results"><i class="fa-solid fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i><p>Ketik minimal 2 karakter untuk mulai search</p></div>';
         }
         
         function closeDJPModal() {
@@ -1011,7 +1361,7 @@ $conn->close();
             const searchValue = document.getElementById('outlet-search').value.trim();
             
             if (searchValue.length < 2) {
-                document.getElementById('outlet-results').innerHTML = '<div class="no-results"><i class="fas fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i><p>Ketik minimal 2 karakter untuk mulai search</p></div>';
+                document.getElementById('outlet-results').innerHTML = '<div class="no-results"><i class="fa-solid fa-info-circle" style="font-size: 40px; color: #bdc3c7; margin-bottom: 10px;"></i><p>Ketik minimal 2 karakter untuk mulai search</p></div>';
                 return;
             }
             
@@ -1024,7 +1374,7 @@ $conn->close();
         
         async function performSearch(searchValue) {
             const resultsDiv = document.getElementById('outlet-results');
-            resultsDiv.innerHTML = '<div class="no-results"><i class="fas fa-spinner fa-spin" style="font-size: 40px; color: #3498db; margin-bottom: 10px;"></i><p>Searching...</p></div>';
+            resultsDiv.innerHTML = '<div class="no-results"><i class="fa-solid fa-spinner fa-spin" style="font-size: 40px; color: #3498db; margin-bottom: 10px;"></i><p>Searching...</p></div>';
             
             const formData = new FormData();
             formData.append('action', 'search_outlets');
@@ -1069,6 +1419,101 @@ $conn->close();
                 id_digipos: idDigipos
             };
             addOutletRow(true, outletData);
+        }
+
+        // Export Functions
+        function exportFilteredCSV() {
+            const tanggal = document.getElementById('filter_tanggal').value;
+            const tanggalEnd = document.getElementById('filter_tanggal_end').value;
+            const salesForceId = document.getElementById('filter_sales_force').value;
+            if (!tanggal || !salesForceId) {
+                showPopup({title:'Validasi', message:'Pilih tanggal dan sales force dulu untuk export filter', type:'warning'});
+                return;
+            }
+            let url = 'input_penjualan_outlet.php?export=csv&sales_force_id=' + encodeURIComponent(salesForceId);
+            if (tanggalEnd) {
+                url += '&start_date=' + encodeURIComponent(tanggal) + '&end_date=' + encodeURIComponent(tanggalEnd);
+            } else {
+                url += '&tanggal=' + encodeURIComponent(tanggal);
+            }
+            window.location = url;
+        }
+
+        function exportAllCSV() {
+            window.location = 'input_penjualan_outlet.php?export=csv';
+        }
+
+        // Popup helpers (global)
+        function showPopup({title='Informasi', message='', type='info', buttons}) {
+            let overlay = document.getElementById('popupModal');
+            if (!overlay) return console.error('popupModal element not found');
+            const header = document.getElementById('popupHeader');
+            const titleEl = document.getElementById('popupTitle');
+            const bodyEl = document.getElementById('popupBody');
+            const actions = document.getElementById('popupActions');
+            header.classList.remove('info','warning','danger','success');
+            header.classList.add(type);
+            const iconDiv = header.querySelector('.modal-icon');
+            const iconClass = {
+                info:'fa-solid fa-circle-info',
+                warning:'fa-solid fa-triangle-exclamation',
+                danger:'fa-solid fa-circle-xmark',
+                success:'fa-solid fa-circle-check'
+            }[type] || 'fa-solid fa-circle-info';
+            iconDiv.innerHTML = '<i class="'+iconClass+'"></i>';
+            titleEl.textContent = title;
+            bodyEl.innerHTML = message;
+            actions.innerHTML = '';
+            if (buttons && buttons.length) {
+                buttons.forEach(btn => {
+                    const b = document.createElement('button');
+                    b.className = 'btn ' + (btn.className || 'btn-info');
+                    b.textContent = btn.text || 'OK';
+                    b.onclick = () => { try { btn.onClick && btn.onClick(); } finally { closePopup(); } };
+                    actions.appendChild(b);
+                });
+            } else {
+                const ok = document.createElement('button');
+                ok.className = 'btn btn-info'; ok.textContent = 'OK'; ok.onclick = closePopup; actions.appendChild(ok);
+            }
+            overlay.style.display = 'flex';
+            overlay.classList.add('active');
+        }
+
+        function showConfirm(title, message, onYes, onNo) {
+            showPopup({
+                title, message, type:'warning',
+                buttons:[
+                    {text:'Batal', className:'btn-outline', onClick:() => { onNo && onNo(); }},
+                    {text:'Ya, Lanjut', className:'btn-success', onClick:() => { onYes && onYes(); }}
+                ]
+            });
+        }
+
+        function closePopup() {
+            const overlay = document.getElementById('popupModal');
+            if(!overlay) return; overlay.classList.remove('active'); setTimeout(()=>{ overlay.style.display='none'; },150);
+        }
+
+        function exportFilteredXLSX() {
+            const tanggal = document.getElementById('filter_tanggal').value;
+            const tanggalEnd = document.getElementById('filter_tanggal_end').value;
+            const salesForceId = document.getElementById('filter_sales_force').value;
+            if (!tanggal || !salesForceId) {
+                showPopup({title:'Validasi', message:'Pilih tanggal dan sales force dulu untuk export Excel', type:'warning'});
+                return;
+            }
+            let url = 'input_penjualan_outlet.php?export=xlsx&sales_force_id=' + encodeURIComponent(salesForceId);
+            if (tanggalEnd) {
+                url += '&start_date=' + encodeURIComponent(tanggal) + '&end_date=' + encodeURIComponent(tanggalEnd);
+            } else {
+                url += '&tanggal=' + encodeURIComponent(tanggal);
+            }
+            window.location = url;
+        }
+
+        function exportAllXLSX() {
+            window.location = 'input_penjualan_outlet.php?export=xlsx';
         }
         
         // Full Report Function - Always Load User's Cabang Data
@@ -1122,7 +1567,7 @@ $conn->close();
                 
                 if (data.success && data.data.length > 0) {
                     let html = '<table class="input-table"><thead><tr>';
-                    html += '<th>Tanggal</th><th>Cabang</th><th>Sales Force</th><th>Produk</th><th>Outlet</th><th>Qty</th><th>Nominal</th><th>Keterangan</th><th>Author</th>';
+                    html += '<th>Tanggal</th><th>Cabang</th><th>Sales Force</th><th>Produk</th><th>Outlet</th><th>ID Digipos</th><th>NIK KTP</th><th>Qty</th><th>Nominal</th><th>Keterangan</th><th>Author</th>';
                     html += '</tr></thead><tbody>';
                     
                     let totalQty = 0;
@@ -1135,6 +1580,8 @@ $conn->close();
                         html += '<td>' + item.nama_reseller + '</td>';
                         html += '<td>' + item.nama_produk + '</td>';
                         html += '<td>' + item.nama_outlet + '</td>';
+                        html += '<td>' + (item.id_digipos || '-') + '</td>';
+                        html += '<td>' + (item.nik_ktp || '-') + '</td>';
                         html += '<td>' + item.qty + '</td>';
                         html += '<td>Rp ' + parseFloat(item.nominal).toLocaleString('id-ID') + '</td>';
                         html += '<td>' + (item.keterangan || '-') + '</td>';
@@ -1146,7 +1593,7 @@ $conn->close();
                     });
                     
                     html += '<tr style="background: #f8f9fa; font-weight: bold;">';
-                    html += '<td colspan="5">TOTAL</td>';
+                    html += '<td colspan="7">TOTAL</td>';
                     html += '<td>' + totalQty + '</td>';
                     html += '<td>Rp ' + totalNominal.toLocaleString('id-ID') + '</td>';
                     html += '<td colspan="2"></td>';

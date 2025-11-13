@@ -97,6 +97,8 @@ if ($action === 'get_sales_summary') {
             r.nama_reseller,
             pr.nama_produk,
             o.nama_outlet,
+            o.id_digipos,
+            o.nik_ktp,
             po.qty,
             po.nominal,
             po.keterangan
@@ -170,6 +172,8 @@ if ($action === 'get_sales_summary') {
             r.nama_reseller,
             pr.nama_produk,
             o.nama_outlet,
+            o.id_digipos,
+            o.nik_ktp,
             po.qty,
             po.nominal,
             po.keterangan,
