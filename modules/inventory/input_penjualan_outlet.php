@@ -117,7 +117,7 @@ while ($row = $result->fetch_assoc()) {
 
 // Get outlets
 $outlets = [];
-$result = $conn->query("SELECT outlet_id, nama_outlet, nomor_rs, sales_force_id FROM outlet ORDER BY nama_outlet");
+$result = $conn->query("SELECT outlet_id, nama_outlet, nomor_rs, id_digipos, sales_force_id FROM outlet ORDER BY nama_outlet");
 while ($row = $result->fetch_assoc()) {
     $outlets[] = $row;
 }
@@ -204,11 +204,14 @@ $conn->close();
         .btn-delete-row {
             background: #e74c3c;
             color: white;
-            padding: 5px 10px;
+            padding: 6px 10px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 9px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
         .btn-submit {
@@ -525,7 +528,7 @@ $conn->close();
                                 <th style="width: 10%;">Qty *</th>
                                 <th style="width: 15%;">Nominal</th>
                                 <th style="width: 20%;">Outlet *</th>
-                                <th style="width: 10%;">ID Outlet</th>
+                                <th style="width: 10%;">ID Digipos</th>
                                 <th style="width: 15%;">Keterangan</th>
                                 <th style="width: 5%;">Aksi</th>
                             </tr>
@@ -809,13 +812,13 @@ $conn->close();
             html += '</td>';
             
             if (isDJP && outletData) {
-                html += '<td><input type="text" class="outlet-id-display" value="' + outletData.outlet_id + '" readonly></td>';
+                html += '<td><input type="text" class="outlet-id-display" value="' + (outletData.id_digipos || '-') + '" readonly></td>';
             } else {
                 html += '<td><input type="text" class="outlet-id-display" readonly></td>';
             }
             
             html += '<td><input type="text" name="keterangan[]" placeholder="' + (isDJP ? 'DJP - Cross Selling' : 'Opsional') + '"></td>';
-            html += '<td><button type="button" class="btn-delete-row" onclick="deleteRow(' + rowCounter + ')"><i class="fas fa-trash"></i></button></td>';
+            html += '<td><button type="button" class="btn-delete-row" onclick="deleteRow(' + rowCounter + ')"><i class="fas fa-trash"></i> Hapus</button></td>';
             
             row.innerHTML = html;
             tbody.appendChild(row);
@@ -862,7 +865,9 @@ $conn->close();
         function updateOutletId(element) {
             const row = element.closest('tr');
             const outletIdDisplay = row.querySelector('.outlet-id-display');
-            outletIdDisplay.value = element.value;
+            const selectedOutletId = element.value;
+            const outlet = outletsData.find(o => String(o.outlet_id) === String(selectedOutletId));
+            outletIdDisplay.value = outlet && outlet.id_digipos ? outlet.id_digipos : '-';
         }
         
         function validateSubmit() {
@@ -1035,7 +1040,7 @@ $conn->close();
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     data.data.forEach(outlet => {
-                        html += '<div class="outlet-item" onclick="selectDJPOutlet(' + outlet.outlet_id + ', \'' + outlet.nama_outlet.replace(/'/g, "\\'") + '\', \'' + outlet.nomor_rs + '\')">';
+                        html += '<div class="outlet-item" onclick="selectDJPOutlet(' + outlet.outlet_id + ', \'' + outlet.nama_outlet.replace(/'/g, "\\'") + '\', \'' + outlet.nomor_rs + '\', \'' + (outlet.id_digipos || '') + '\')">';
                         html += '<h4>' + outlet.nama_outlet + '</h4>';
                         html += '<p><i class="fas fa-map-marker-alt"></i> ' + outlet.city + ' | <i class="fas fa-barcode"></i> ' + outlet.nomor_rs + '</p>';
                         html += '<p><i class="fas fa-store"></i> ' + outlet.type_outlet + '</p>';
@@ -1056,11 +1061,12 @@ $conn->close();
             }
         }
         
-        function selectDJPOutlet(outletId, outletName, nomorRs) {
+        function selectDJPOutlet(outletId, outletName, nomorRs, idDigipos) {
             const outletData = {
                 outlet_id: outletId,
                 nama_outlet: outletName,
-                nomor_rs: nomorRs
+                nomor_rs: nomorRs,
+                id_digipos: idDigipos
             };
             addOutletRow(true, outletData);
         }

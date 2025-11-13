@@ -418,6 +418,10 @@ $conn->close();
                     <span class="nav-icon">💰</span>
                     <span>Input Penjualan</span>
                 </a>
+                <a href="input_penjualan_outlet.php" class="nav-item">
+                    <span class="nav-icon">🏪</span>
+                    <span>Input Penjualan Per Outlet</span>
+                </a>
                 <a href="inventory_stock.php" class="nav-item">
                     <span class="nav-icon">📦</span>
                     <span>Stock Information</span>

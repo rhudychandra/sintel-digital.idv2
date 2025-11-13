@@ -27,7 +27,7 @@ if ($action === 'get_sales_summary') {
             SELECT 
                 p.tanggal_penjualan as tanggal,
                 r.nama_reseller,
-                COALESCE(kp.nama_kategori, 'Tanpa Kategori') as kategori,
+                COALESCE(kp.nama_kategori, pr.kategori, 'Tanpa Kategori') as kategori,
                 dp.nama_produk,
                 dp.produk_id,
                 SUM(dp.jumlah) as qty,
@@ -39,7 +39,7 @@ if ($action === 'get_sales_summary') {
             JOIN produk pr ON dp.produk_id = pr.produk_id
             LEFT JOIN kategori_produk kp ON pr.kategori_id = kp.kategori_id
             WHERE p.tanggal_penjualan = ? AND p.reseller_id = ?
-            GROUP BY dp.produk_id, dp.nama_produk, kp.nama_kategori, r.nama_reseller, p.tanggal_penjualan
+            GROUP BY dp.produk_id, dp.nama_produk, r.nama_reseller, p.tanggal_penjualan
             ORDER BY dp.nama_produk
         ");
         
@@ -128,22 +128,23 @@ if ($action === 'get_sales_summary') {
     }
     
     // Search outlets by name or nomor_rs (show all outlets - PJP and non-PJP)
-    $search_param = '%' . $search . '%';
-    $stmt = $conn->prepare("
-        SELECT 
-            outlet_id,
-            nama_outlet,
-            nomor_rs,
-            city,
-            type_outlet,
-            sales_force_id,
-            r.nama_reseller as sales_force_name
-        FROM outlet
-        LEFT JOIN reseller r ON outlet.sales_force_id = r.reseller_id
-        WHERE (nama_outlet LIKE ? OR nomor_rs LIKE ? OR city LIKE ?)
-        ORDER BY nama_outlet
-        LIMIT 50
-    ");
+        $search_param = '%' . $search . '%';
+        $stmt = $conn->prepare("
+            SELECT 
+                outlet_id,
+                nama_outlet,
+                nomor_rs,
+                id_digipos,
+                city,
+                type_outlet,
+                sales_force_id,
+                r.nama_reseller as sales_force_name
+            FROM outlet
+            LEFT JOIN reseller r ON outlet.sales_force_id = r.reseller_id
+            WHERE (nama_outlet LIKE ? OR nomor_rs LIKE ? OR city LIKE ?)
+            ORDER BY nama_outlet
+            LIMIT 50
+        ");
     
     $stmt->bind_param("sss", $search_param, $search_param, $search_param);
     $stmt->execute();

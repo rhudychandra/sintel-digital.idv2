@@ -723,6 +723,10 @@ $conn->close();
                     <span class="nav-icon">💰</span>
                     <span>Input Penjualan</span>
                 </a>
+                <a href="<?php echo BASE_PATH; ?>/modules/inventory/input_penjualan_outlet.php" class="nav-item">
+                    <span class="nav-icon">🏪</span>
+                    <span>Input Penjualan Per Outlet</span>
+                </a>
                 <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory_stock.php" class="nav-item active">
                     <span class="nav-icon">📦</span>
                     <span>Stock Information</span>
