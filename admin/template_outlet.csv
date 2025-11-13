@@ -1,0 +1,4 @@
+nama_outlet,nomor_rs,id_digipos,nik_ktp,kelurahan_desa,kecamatan,city,nama_pemilik,nomor_hp_pemilik,type_outlet,jadwal_kategori,hari,sales_force_id,cabang_id,status_outlet,jenis_rs
+Toko Sinar Jaya,RS-001,DGP-001,3201012345678901,Sukajadi,Bandung Wetan,Bandung,Budi Santoso,081234567890,Retail,Kategori A,Senin,1,1,PJP,Retail
+Warung Maju Makmur,RS-002,DGP-002,,Cicaheum,Kiaracondong,Bandung,Siti Aminah,082345678901,Grosir,Kategori B,Selasa,2,1,PJP,Pareto
+Counter Cell Sejahtera,RS-003,DGP-003,3201023456789012,Antapani,Antapani,Bandung,Agus Wijaya,083456789012,Retail,Kategori A,Rabu,,2,Non PJP,RS Eksekusi Voucher

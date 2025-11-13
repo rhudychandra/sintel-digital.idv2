@@ -162,6 +162,10 @@ $conn->close();
                     <span class="nav-icon">🤝</span>
                     <span>Reseller</span>
                 </a>
+                <a href="outlet.php" class="nav-item">
+                    <span class="nav-icon">🏪</span>
+                    <span>Outlet</span>
+                </a>
                 <a href="penjualan.php" class="nav-item">
                     <span class="nav-icon">💰</span>
                     <span>Penjualan</span>

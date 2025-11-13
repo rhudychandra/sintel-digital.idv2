@@ -1,6 +1,6 @@
-kode_produk,nama_produk,kategori,hpp,harga,deskripsi
-VF-Lite-Inet -001,"VF Internet Lite 1,5GB 3Hari",Voucher Internet Lite,6400,8002,"VF Internet Lite 1,5GB 3Hari"
-VF-Lite-Inet -002,VF Internet Lite 2GB 3Hari,Voucher Internet Lite,8100,10120,VF Internet Lite 2GB 3Hari
+kode_produk,nama_produk,kategori,hpp_saldo,hpp_fisik,harga,deskripsi
+VF-Lite-Inet -001,"VF Internet Lite 1,5GB 3Hari",Voucher Internet Lite,6400,6800,8002,"VF Internet Lite 1,5GB 3Hari"
+VF-Lite-Inet -002,VF Internet Lite 2GB 3Hari,Voucher Internet Lite,8100,8600,10120,VF Internet Lite 2GB 3Hari
 VF-Lite-Inet -003,VF Internet Lite 3GB 3Hari,Voucher Internet Lite,11300,VF Internet Lite 3GB 3Hari
 VF-Lite-Inet -004,VF Internet Lite 1GB 1Hari,Voucher Internet Lite,5500,VF Internet Lite 1GB 1Hari
 VF-Lite-Inet -005,VF Internet Lite 2GB 5Hari,Voucher Internet Lite,11400,VF Internet Lite 2GB 5Hari

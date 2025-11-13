@@ -1,4 +1,18 @@
 /* Admin Panel Styles */
+/* Force Lexend globally for admin panel */
+body,
+*,
+html {
+    font-family: 'Lexend', sans-serif !important;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f6fa !important;
+}
+
 /* Force Lexend for all dropdown options in admin */
 select,
 select *,
@@ -26,6 +40,13 @@ select:-moz-focusring {
     min-height: 100vh;
 }
 
+/* Remove white border from admin container */
+.admin-container {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+}
+
 /* Force Lexend for all form elements */
 .admin-page input,
 .admin-page select,
@@ -38,6 +59,9 @@ select:-moz-focusring {
 .admin-container {
     display: flex;
     min-height: 100vh;
+    background: #f5f6fa;
+    margin: 0;
+    padding: 0;
 }
 
 /* Sidebar Styles */
@@ -51,22 +75,26 @@ select:-moz-focusring {
     height: 100vh;
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .sidebar-header {
     padding: 30px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .sidebar-header h2 {
-    font-size: 16px;
+    font-size: 14px;
     margin-bottom: 5px;
     font-weight: 600;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .sidebar-header p {
-    font-size: 9px;
+    font-size: 7px;
     opacity: 0.9;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .sidebar-nav {
@@ -82,6 +110,19 @@ select:-moz-focusring {
     text-decoration: none;
     transition: all 0.3s ease;
     border-left: 3px solid transparent;
+    font-family: 'Lexend', sans-serif !important;
+    font-size: 12px;
+}
+
+.nav-item span {
+    font-family: 'Lexend', sans-serif !important;
+    font-size: 12px;
+}
+
+.nav-icon {
+    font-size: 12px;
+    margin-right: 12px;
+    width: 20px;
 }
 
 .nav-item:hover {
@@ -92,12 +133,6 @@ select:-moz-focusring {
 .nav-item.active {
     background: rgba(255, 255, 255, 0.2);
     border-left-color: white;
-}
-
-.nav-icon {
-    font-size: 14px;
-    margin-right: 12px;
-    width: 22px;
 }
 
 .sidebar-footer {
@@ -116,8 +151,8 @@ select:-moz-focusring {
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s ease;
-    font-size: 9px;
-    font-family: 'Lexend', sans-serif;
+    font-size: 7px;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .btn-back {
@@ -143,6 +178,8 @@ select:-moz-focusring {
     flex: 1;
     margin-left: 340px;
     padding: 0;
+    background: #f5f6fa;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .admin-header {
@@ -152,12 +189,14 @@ select:-moz-focusring {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .admin-header h1 {
     color: #2c3e50;
     font-size: 24px;
     font-weight: 600;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .header-info {
@@ -168,11 +207,14 @@ select:-moz-focusring {
 
 .date {
     color: #7f8c8d;
+    font-family: 'Lexend', sans-serif !important;
     font-size: 9px;
 }
 
 .admin-content {
     padding: 30px 40px;
+    background: #f5f6fa;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 /* Statistics Cards */
@@ -319,6 +361,38 @@ select:-moz-focusring {
     font-size: 10px;
 }
 
+/* Card Styles */
+.card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.card-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.card-header h3 {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.card-body {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
 /* Data Table Styles */
 .table-container {
     background: white;
@@ -326,6 +400,7 @@ select:-moz-focusring {
     padding: 25px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     overflow-x: auto;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .table-header {
@@ -339,6 +414,7 @@ select:-moz-focusring {
     color: #2c3e50;
     font-size: 16px;
     font-weight: 600;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .btn-add {
@@ -352,6 +428,7 @@ select:-moz-focusring {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .btn-add:hover {
@@ -362,6 +439,7 @@ select:-moz-focusring {
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .data-table thead {
@@ -374,16 +452,39 @@ select:-moz-focusring {
     font-weight: 600;
     color: #2c3e50;
     border-bottom: 2px solid #e9ecef;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .data-table td {
     padding: 15px;
     border-bottom: 1px solid #e9ecef;
     color: #495057;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .data-table tbody tr:hover {
     background: #f8f9fa;
+}
+
+/* Outlet Table - Smaller Font */
+.outlet-table th {
+    font-size: 9px;
+    padding: 10px;
+}
+
+.outlet-table td {
+    font-size: 9px;
+    padding: 10px;
+}
+
+.outlet-table .badge {
+    font-size: 8px;
+    padding: 3px 8px;
+}
+
+.outlet-table .btn-sm {
+    font-size: 9px;
+    padding: 5px 10px;
 }
 
 .badge {
@@ -391,17 +492,34 @@ select:-moz-focusring {
     border-radius: 20px;
     font-size: 8px;
     font-weight: 500;
-    font-family: 'Lexend', sans-serif;
+    font-family: 'Lexend', sans-serif !important;
 }
 
-.badge-active {
+.badge-active,
+.badge-success {
     background: #d4edda;
     color: #155724;
 }
 
-.badge-inactive {
+.badge-inactive,
+.badge-danger {
     background: #f8d7da;
     color: #721c24;
+}
+
+.badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-primary {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-secondary {
+    background: #e2e3e5;
+    color: #383d41;
 }
 
 .action-buttons {
@@ -448,6 +566,93 @@ select:-moz-focusring {
     background: #7f8c8d;
 }
 
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #8B1538 0%, #C84B31 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 21, 56, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4);
+}
+
+.btn-warning,
+.btn-sm.btn-warning {
+    background: #f39c12;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-danger,
+.btn-sm.btn-danger {
+    background: #e74c3c;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 9px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 9px;
+}
+
 /* Form Styles */
 .form-container {
     background: white;
@@ -455,6 +660,18 @@ select:-moz-focusring {
     padding: 30px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     max-width: 800px;
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.admin-form {
+    font-family: 'Lexend', sans-serif !important;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
 .form-group {
@@ -467,6 +684,7 @@ select:-moz-focusring {
     color: #2c3e50;
     font-weight: 500;
     font-size: 10px;
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .form-group input,
@@ -477,8 +695,12 @@ select:-moz-focusring {
     border: 2px solid #e9ecef;
     border-radius: 8px;
     font-size: 10px;
-    font-family: 'Lexend', sans-serif;
+    font-family: 'Lexend', sans-serif !important;
     transition: all 0.3s ease;
+}
+
+.form-group small {
+    font-family: 'Lexend', sans-serif !important;
 }
 
 .form-group input:focus,
@@ -530,6 +752,49 @@ select:-moz-focusring {
 
 .btn-cancel:hover {
     background: #7f8c8d;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Alert Styles */
+.alert {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Lexend', sans-serif !important;
+    font-size: 11px;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
 }
 
 /* Modal Styles */

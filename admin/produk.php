@@ -39,14 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Generate kode_produk if not provided
                 $kode_produk = !empty($_POST['kode_produk']) ? $_POST['kode_produk'] : 'PRD-' . time() . '-' . rand(100, 999);
                 
-                // Calculate profit margin
-                $hpp = isset($_POST['hpp']) ? floatval($_POST['hpp']) : 0;
+                // Calculate profit margin: Harga Jual - (HPP Saldo + HPP Fisik)
+                $hpp_saldo = isset($_POST['hpp_saldo']) ? floatval($_POST['hpp_saldo']) : 0;
+                $hpp_fisik = isset($_POST['hpp_fisik']) ? floatval($_POST['hpp_fisik']) : 0;
                 $harga = floatval($_POST['harga']);
-                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                $total_hpp = $hpp_saldo + $hpp_fisik;
+                $profit = $harga - $total_hpp;
+                $profit_margin = ($total_hpp > 0) ? ($profit / $total_hpp) * 100 : 0;
                 
                 // Add new product (cabang_id = NULL for global products)
-                $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, harga, hpp, profit_margin, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)");
-                $stmt->bind_param("sssddds", $kode_produk, $_POST['nama_produk'], $kategori, $_POST['harga'], $hpp, $profit_margin, $_POST['deskripsi']);
+                $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, harga, hpp_saldo, hpp_fisik, profit_margin_saldo, profit_margin_fisik, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)");
+                $stmt->bind_param("sssdddds", $kode_produk, $_POST['nama_produk'], $kategori, $_POST['harga'], $hpp_saldo, $hpp_fisik, $profit, $profit_margin, $_POST['deskripsi']);
                 
                 if ($stmt->execute()) {
                     $_SESSION['message'] = "Produk berhasil ditambahkan dengan kategori: " . htmlspecialchars($kategori);
@@ -73,14 +76,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Use existing kode_produk or generate new one
                 $kode_produk = !empty($_POST['kode_produk']) ? $_POST['kode_produk'] : 'PRD-' . time() . '-' . rand(100, 999);
                 
-                // Calculate profit margin
-                $hpp = isset($_POST['hpp']) ? floatval($_POST['hpp']) : 0;
+                // Calculate profit margin: Harga Jual - (HPP Saldo + HPP Fisik)
+                $hpp_saldo = isset($_POST['hpp_saldo']) ? floatval($_POST['hpp_saldo']) : 0;
+                $hpp_fisik = isset($_POST['hpp_fisik']) ? floatval($_POST['hpp_fisik']) : 0;
                 $harga = floatval($_POST['harga']);
-                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                $total_hpp = $hpp_saldo + $hpp_fisik;
+                $profit = $harga - $total_hpp;
+                $profit_margin = ($total_hpp > 0) ? ($profit / $total_hpp) * 100 : 0;
                 
                 // Update product (keep cabang_id = NULL for global products)
-                $stmt = $conn->prepare("UPDATE produk SET kode_produk=?, nama_produk=?, kategori=?, hpp=?, harga=?, profit_margin=?, deskripsi=? WHERE produk_id=?");
-                $stmt->bind_param("sssdddsi", $kode_produk, $_POST['nama_produk'], $kategori, $hpp, $harga, $profit_margin, $_POST['deskripsi'], $_POST['produk_id']);
+                $stmt = $conn->prepare("UPDATE produk SET kode_produk=?, nama_produk=?, kategori=?, hpp_saldo=?, hpp_fisik=?, harga=?, profit_margin_saldo=?, profit_margin_fisik=?, deskripsi=? WHERE produk_id=?");
+                $stmt->bind_param("sssdddddsi", $kode_produk, $_POST['nama_produk'], $kategori, $hpp_saldo, $hpp_fisik, $harga, $profit, $profit_margin, $_POST['deskripsi'], $_POST['produk_id']);
                 
                 if ($stmt->execute()) {
                     $_SESSION['message'] = "Produk berhasil diupdate dengan kategori: " . htmlspecialchars($kategori);
@@ -205,6 +211,10 @@ $conn->close();
                     <span class="nav-icon">🤝</span>
                     <span>Reseller</span>
                 </a>
+                <a href="outlet.php" class="nav-item">
+                    <span class="nav-icon">🏪</span>
+                    <span>Outlet</span>
+                </a>
                 <a href="penjualan.php" class="nav-item">
                     <span class="nav-icon">💰</span>
                     <span>Penjualan</span>
@@ -268,27 +278,40 @@ $conn->close();
                                 <th>ID</th>
                                 <th>Nama Produk</th>
                                 <th>Kategori</th>
-                                <th>HPP</th>
+                                <th>HPP Saldo</th>
+                                <th>HPP Fisik</th>
+                                <th>Total HPP</th>
                                 <th>Harga Jual</th>
-                                <th>Margin</th>
+                                <th>Profit</th>
+                                <th>Margin %</th>
                                 <th>Deskripsi</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($products as $product): ?>
+                            <?php
+                                $hpp_saldo = $product['hpp_saldo'] ?? 0;
+                                $hpp_fisik = $product['hpp_fisik'] ?? 0;
+                                $total_hpp = $hpp_saldo + $hpp_fisik;
+                                $harga = $product['harga'];
+                                $profit = $harga - $total_hpp;
+                                $margin = ($total_hpp > 0) ? ($profit / $total_hpp) * 100 : 0;
+                                $color_margin = $margin > 20 ? '#27ae60' : ($margin > 10 ? '#f39c12' : '#e74c3c');
+                            ?>
                             <tr>
                                 <td><?php echo $product['produk_id']; ?></td>
                                 <td><?php echo htmlspecialchars($product['nama_produk']); ?></td>
                                 <td><?php echo htmlspecialchars($product['kategori']); ?></td>
-                                <td style="color: #e74c3c; font-weight: 600;">Rp <?php echo number_format($product['hpp'] ?? 0, 0, ',', '.'); ?></td>
-                                <td style="color: #27ae60; font-weight: 600;">Rp <?php echo number_format($product['harga'], 0, ',', '.'); ?></td>
+                                <td style="color: #e74c3c; font-weight: 600;">Rp <?php echo number_format($hpp_saldo, 0, ',', '.'); ?></td>
+                                <td style="color: #e67e22; font-weight: 600;">Rp <?php echo number_format($hpp_fisik, 0, ',', '.'); ?></td>
+                                <td style="color: #8B1538; font-weight: 700; background: #f8f9fa;">Rp <?php echo number_format($total_hpp, 0, ',', '.'); ?></td>
+                                <td style="color: #27ae60; font-weight: 700;">Rp <?php echo number_format($harga, 0, ',', '.'); ?></td>
+                                <td style="color: #2980b9; font-weight: 600;">
+                                    Rp <?php echo number_format($profit, 0, ',', '.'); ?>
+                                </td>
                                 <td>
-                                    <?php 
-                                    $margin = $product['profit_margin'] ?? 0;
-                                    $color = $margin > 20 ? '#27ae60' : ($margin > 10 ? '#f39c12' : '#e74c3c');
-                                    ?>
-                                    <span style="background: <?php echo $color; ?>; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    <span style="background: <?php echo $color_margin; ?>; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
                                         <?php echo number_format($margin, 1); ?>%
                                     </span>
                                 </td>
@@ -314,7 +337,7 @@ $conn->close();
                             <?php endforeach; ?>
                             <?php if (empty($products)): ?>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                                <td colspan="10" style="text-align: center; padding: 30px; color: #7f8c8d;">
                                     Belum ada data produk
                                 </td>
                             </tr>
@@ -358,12 +381,21 @@ $conn->close();
                         </div>
                         
                         <div class="form-group">
-                            <label for="hpp">HPP (Harga Pokok Penjualan) *</label>
-                            <input type="number" id="hpp" name="hpp" required step="0.01" 
-                                   value="<?php echo $edit_data['hpp'] ?? '0'; ?>"
-                                   placeholder="Harga beli dari supplier"
+                            <label for="hpp_saldo">HPP Saldo *</label>
+                            <input type="number" id="hpp_saldo" name="hpp_saldo" required step="0.01" 
+                                   value="<?php echo $edit_data['hpp_saldo'] ?? '0'; ?>"
+                                   placeholder="HPP untuk produk saldo/virtual"
                                    onchange="calculateMargin()">
-                            <small style="color: #7f8c8d;">Harga modal/beli produk dari supplier</small>
+                            <small style="color: #7f8c8d;">Harga modal untuk produk saldo (LinkAja, Finpay, dll)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="hpp_fisik">HPP Fisik *</label>
+                            <input type="number" id="hpp_fisik" name="hpp_fisik" required step="0.01" 
+                                   value="<?php echo $edit_data['hpp_fisik'] ?? '0'; ?>"
+                                   placeholder="HPP untuk produk fisik"
+                                   onchange="calculateMargin()">
+                            <small style="color: #7f8c8d;">Harga modal untuk produk fisik (Voucher, Perdana, dll)</small>
                         </div>
                         
                         <div class="form-group">
@@ -375,12 +407,32 @@ $conn->close();
                             <small style="color: #7f8c8d;">Harga jual ke customer</small>
                         </div>
                         
-                        <div class="form-group">
-                            <label>Profit Margin</label>
-                            <div id="marginDisplay" style="padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
-                                <span style="font-size: 24px; font-weight: 700; color: #8B1538;" id="marginValue">0%</span>
-                                <br>
-                                <small style="color: #7f8c8d;">Margin keuntungan</small>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 20px 0;">
+                            <div class="form-group">
+                                <label>Total HPP</label>
+                                <div style="padding: 15px; background: #f8f9fa; border: 2px solid #8B1538; border-radius: 8px; text-align: center;">
+                                    <span style="font-size: 22px; font-weight: 700; color: #8B1538;" id="totalHppValue">Rp 0</span>
+                                    <br>
+                                    <small style="color: #7f8c8d;">Saldo + Fisik</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Profit</label>
+                                <div style="padding: 15px; background: #e8f8f5; border-radius: 8px; text-align: center;">
+                                    <span style="font-size: 22px; font-weight: 700; color: #27ae60;" id="profitValue">Rp 0</span>
+                                    <br>
+                                    <small style="color: #7f8c8d;">Harga - Total HPP</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Profit Margin</label>
+                                <div style="padding: 15px; background: #fff3cd; border-radius: 8px; text-align: center;">
+                                    <span style="font-size: 24px; font-weight: 700; color: #e74c3c;" id="marginValue">0%</span>
+                                    <br>
+                                    <small style="color: #7f8c8d;">Profit / Total HPP</small>
+                                </div>
                             </div>
                         </div>
                         
@@ -415,9 +467,10 @@ $conn->close();
                     <h4>📋 Petunjuk Upload:</h4>
                     <ul>
                         <li>File harus dalam format CSV (Comma Separated Values)</li>
-                        <li>Kolom wajib: <strong>nama_produk, kategori, hpp, harga</strong></li>
+                        <li>Kolom wajib: <strong>nama_produk, kategori, hpp_saldo, hpp_fisik, harga</strong></li>
                         <li>Kolom opsional: <strong>kode_produk, deskripsi</strong></li>
-                        <li>HPP = Harga Pokok Penjualan (harga modal dari supplier)</li>
+                        <li>HPP Saldo = Harga modal untuk produk saldo/virtual</li>
+                        <li>HPP Fisik = Harga modal untuk produk fisik</li>
                         <li>Kategori harus sudah terdaftar di sistem</li>
                         <li>Kode produk akan di-generate otomatis jika kosong</li>
                         <li>Ukuran file maksimal 5MB</li>
@@ -523,15 +576,41 @@ $conn->close();
             }
         });
         
-        // Calculate profit margin
+        // Calculate profit margins
         function calculateMargin() {
-            const hpp = parseFloat(document.getElementById('hpp').value) || 0;
+            const hpp_saldo = parseFloat(document.getElementById('hpp_saldo').value) || 0;
+            const hpp_fisik = parseFloat(document.getElementById('hpp_fisik').value) || 0;
             const harga = parseFloat(document.getElementById('harga').value) || 0;
             
-            if (hpp > 0 && harga > 0) {
-                const margin = ((harga - hpp) / hpp) * 100;
-                const marginElement = document.getElementById('marginValue');
+            // Calculate totals
+            const totalHpp = hpp_saldo + hpp_fisik;
+            const profit = harga - totalHpp;
+            let margin = 0;
+            if (totalHpp > 0) {
+                margin = (profit / totalHpp) * 100;
+            }
+            
+            // Update Total HPP
+            const totalHppElement = document.getElementById('totalHppValue');
+            if (totalHppElement) {
+                totalHppElement.textContent = 'Rp ' + totalHpp.toLocaleString('id-ID');
+                totalHppElement.style.color = '#8B1538';
+                totalHppElement.style.fontWeight = '700';
+            }
+            
+            // Update Profit
+            const profitElement = document.getElementById('profitValue');
+            if (profitElement) {
+                profitElement.textContent = 'Rp ' + profit.toLocaleString('id-ID');
+                profitElement.style.color = profit > 0 ? '#27ae60' : '#e74c3c';
+                profitElement.style.fontWeight = '600';
+            }
+            
+            // Update Margin
+            const marginElement = document.getElementById('marginValue');
+            if (marginElement) {
                 marginElement.textContent = margin.toFixed(1) + '%';
+                marginElement.style.fontWeight = '700';
                 
                 // Color based on margin
                 if (margin > 20) {
@@ -541,9 +620,6 @@ $conn->close();
                 } else {
                     marginElement.style.color = '#e74c3c'; // Red
                 }
-            } else {
-                document.getElementById('marginValue').textContent = '0%';
-                document.getElementById('marginValue').style.color = '#8B1538';
             }
         }
         

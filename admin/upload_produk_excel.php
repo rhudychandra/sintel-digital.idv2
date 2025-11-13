@@ -141,16 +141,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
                 }
                 $check_stmt->close();
                 
-                // Get HPP from CSV (column 3) or default to 80% of harga
-                $hpp = isset($data[3]) && is_numeric($data[3]) ? floatval($data[3]) : ($harga * 0.80);
+                // Get HPP from CSV (columns 3 & 4) or default to 80% & 85% of harga
+                $hpp_saldo = isset($data[3]) && is_numeric($data[3]) ? floatval($data[3]) : ($harga * 0.80);
+                $hpp_fisik = isset($data[4]) && is_numeric($data[4]) ? floatval($data[4]) : ($harga * 0.85);
                 
-                // Calculate profit margin
-                $profit_margin = ($hpp > 0) ? (($harga - $hpp) / $hpp) * 100 : 0;
+                // Calculate profit based on combined HPP
+                $total_hpp = $hpp_saldo + $hpp_fisik;
+                $profit = $harga - $total_hpp;
+                $profit_margin = ($total_hpp > 0) ? ($profit / $total_hpp) * 100 : 0;
                 
-                // Insert product
+                // Insert product (profit_margin_saldo stores profit in Rp, profit_margin_fisik stores margin %)
                 try {
-                    $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, hpp, harga, profit_margin, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)");
-                    $stmt->bind_param("sssddds", $kode_produk, $nama_produk, $kategori, $hpp, $harga, $profit_margin, $deskripsi);
+                    $stmt = $conn->prepare("INSERT INTO produk (kode_produk, nama_produk, kategori, hpp_saldo, hpp_fisik, harga, profit_margin_saldo, profit_margin_fisik, deskripsi, cabang_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)");
+                    $stmt->bind_param("sssddddd s", $kode_produk, $nama_produk, $kategori, $hpp_saldo, $hpp_fisik, $harga, $profit, $profit_margin, $deskripsi);
                     
                     if ($stmt->execute()) {
                         $success_count++;
