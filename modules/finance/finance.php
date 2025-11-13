@@ -32,10 +32,29 @@ $page_title = "Finance - Sinar Telkom Dashboard System";
 
     <main class="submenu-main">
         <?php if (isset($_SESSION['error_message'])): ?>
-        <div class="alert alert-error" style="max-width:800px;margin:20px auto 30px;padding:15px 20px;background:#fee;border-left:4px solid #c33;border-radius:8px;color:#c33;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;gap:10px;">
-            <i class="fas fa-exclamation-circle" style="font-size:20px;"></i>
-            <span><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></span>
+        <!-- Error Popup Modal -->
+        <div id="errorModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;">
+            <div style="background:white;padding:30px;border-radius:15px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);text-align:center;">
+                <div style="width:80px;height:80px;background:#8B1538;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-exclamation-circle" style="font-size:40px;color:white;"></i>
+                </div>
+                <h2 style="color:#8B1538;margin-bottom:15px;font-size:24px;">Akses Ditolak!</h2>
+                <p style="color:#333;font-size:16px;line-height:1.6;margin-bottom:25px;">
+                    <?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?>
+                </p>
+                <button onclick="document.getElementById('errorModal').style.display='none'" 
+                        style="background:#8B1538;color:white;border:none;padding:12px 30px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.3s;">
+                    Mengerti
+                </button>
+            </div>
         </div>
+        <script>
+            // Auto close after 5 seconds
+            setTimeout(function() {
+                var modal = document.getElementById('errorModal');
+                if (modal) modal.style.display = 'none';
+            }, 5000);
+        </script>
         <?php endif; ?>
         
         <div class="rounded-menu-container">

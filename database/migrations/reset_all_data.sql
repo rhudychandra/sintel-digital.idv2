@@ -8,6 +8,8 @@
 --   - Semua detail penjualan
 --   - Semua inventory records
 --   - Semua pelanggan
+--   - Semua setoran harian TAP
+--   - Semua evidence setoran
 --   - Reset stock produk ke 0
 --
 -- Yang DIPERTAHANKAN:
@@ -56,13 +58,25 @@ UPDATE produk SET stok = 0;
 DELETE FROM pelanggan;
 
 -- =====================================================
--- STEP 6: Reset AUTO_INCREMENT counters (optional)
+-- STEP 6: Delete all setoran harian TAP records
+-- =====================================================
+DELETE FROM setoran_harian;
+
+-- =====================================================
+-- STEP 7: Delete all setoran evidence records
+-- =====================================================
+DELETE FROM setoran_evidence;
+
+-- =====================================================
+-- STEP 8: Reset AUTO_INCREMENT counters (optional)
 -- =====================================================
 -- Uncomment jika ingin reset ID counter ke 1:
 -- ALTER TABLE detail_penjualan AUTO_INCREMENT = 1;
 -- ALTER TABLE penjualan AUTO_INCREMENT = 1;
 -- ALTER TABLE inventory AUTO_INCREMENT = 1;
 -- ALTER TABLE pelanggan AUTO_INCREMENT = 1;
+-- ALTER TABLE setoran_harian AUTO_INCREMENT = 1;
+-- ALTER TABLE setoran_evidence AUTO_INCREMENT = 1;
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
@@ -79,6 +93,10 @@ UNION ALL
 SELECT 'INVENTORY', COUNT(*) FROM inventory
 UNION ALL
 SELECT 'PELANGGAN', COUNT(*) FROM pelanggan
+UNION ALL
+SELECT 'SETORAN_HARIAN', COUNT(*) FROM setoran_harian
+UNION ALL
+SELECT 'SETORAN_EVIDENCE', COUNT(*) FROM setoran_evidence
 UNION ALL
 SELECT 'PRODUK_STOK_>_0', COUNT(*) FROM produk WHERE stok > 0;
 
