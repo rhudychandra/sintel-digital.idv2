@@ -74,22 +74,37 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
     }
 }
 
-// Get sales forces based on role
-$sales_forces = [];
-if (in_array($user['role'], ['admin', 'staff', 'supervisor'])) {
-    // Filter by user's cabang
-    $stmt = $conn->prepare("SELECT reseller_id, nama_reseller FROM reseller WHERE cabang_id = ? AND status='active' ORDER BY nama_reseller");
+// Get cabang name for non-admin users
+$user_cabang_name = '-';
+if (!empty($user['cabang_id'])) {
+    $stmt = $conn->prepare("SELECT nama_cabang FROM cabang WHERE cabang_id = ?");
     $stmt->bind_param("i", $user['cabang_id']);
     $stmt->execute();
     $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $user_cabang_name = $row['nama_cabang'];
+    }
+}
+
+// Get sales forces based on role
+$sales_forces = [];
+// For non-admin users, filter by cabang
+if (in_array($user['role'], ['administrator', 'manager'])) {
+    // Admin/Manager: all sales forces with cabang_id
+    $result = $conn->query("SELECT reseller_id, nama_reseller, cabang_id FROM reseller WHERE status='active' ORDER BY nama_reseller");
     while ($row = $result->fetch_assoc()) {
         $sales_forces[] = $row;
     }
 } else {
-    // Admin/Manager: all sales forces
-    $result = $conn->query("SELECT reseller_id, nama_reseller, cabang_id FROM reseller WHERE status='active' ORDER BY nama_reseller");
-    while ($row = $result->fetch_assoc()) {
-        $sales_forces[] = $row;
+    // Staff/Supervisor/Finance/etc: Filter by user's cabang
+    if (!empty($user['cabang_id'])) {
+        $stmt = $conn->prepare("SELECT reseller_id, nama_reseller, cabang_id FROM reseller WHERE cabang_id = ? AND status='active' ORDER BY nama_reseller");
+        $stmt->bind_param("i", $user['cabang_id']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $sales_forces[] = $row;
+        }
     }
 }
 
@@ -467,7 +482,7 @@ $conn->close();
                     <input type="hidden" id="filter_cabang" value="<?php echo $user['cabang_id']; ?>">
                     <div class="form-group">
                         <label>Cabang</label>
-                        <input type="text" value="<?php echo htmlspecialchars($user['cabang_name'] ?? '-'); ?>" disabled>
+                        <input type="text" value="<?php echo htmlspecialchars($user_cabang_name); ?>" disabled style="background: #f8f9fa; font-weight: 600;">
                     </div>
                     <?php endif; ?>
                     
@@ -531,16 +546,17 @@ $conn->close();
                 
                 <div class="alert-warning" id="validation-message" style="display: none;"></div>
                 
-                <button type="submit" class="btn-submit" onclick="return validateSubmit()">
+                <button type="submit" class="btn-submit" onclick="return validateSubmit()" style="margin-bottom: 40px;">
                     <i class="fas fa-save"></i> Submit Penjualan
                 </button>
             </form>
             
             <!-- Report Penjualan Per Outlet -->
-            <div class="table-section">
-                <h3><i class="fas fa-file-alt"></i> Report Penjualan Per Outlet</h3>
+            <div class="table-section" id="history-section" style="margin-top: 40px;">
+                <h3><i class="fas fa-file-alt"></i> History Input Penjualan Outlet<?php if (!in_array($user['role'], ['administrator', 'manager'])): ?> - <?php echo htmlspecialchars($user_cabang_name); ?><?php endif; ?></h3>
+                
                 <div id="report-content">
-                    <p style="color: #7f8c8d; font-style: italic;">Pilih tanggal dan sales force untuk melihat report</p>
+                    <p style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
                 </div>
             </div>
             </div>
@@ -576,7 +592,11 @@ $conn->close();
         let searchTimeout = null;
         
         // Load sales force based on cabang
+        console.log('User role: <?php echo $user["role"]; ?>', 'Cabang ID: <?php echo $user["cabang_id"] ?? "none"; ?>');
+        console.log('Sales forces data:', salesForcesData);
+        
         <?php if (in_array($user['role'], ['administrator', 'manager'])): ?>
+        // Administrator/Manager: Dynamic filter by cabang
         document.getElementById('filter_cabang').addEventListener('change', function() {
             const cabangId = this.value;
             const salesSelect = document.getElementById('filter_sales_force');
@@ -584,7 +604,16 @@ $conn->close();
             
             if (cabangId) {
                 const filtered = salesForcesData.filter(sf => sf.cabang_id == cabangId);
+                console.log('Filtered sales forces for cabang ' + cabangId + ':', filtered);
                 filtered.forEach(sf => {
+                    const option = document.createElement('option');
+                    option.value = sf.reseller_id;
+                    option.textContent = sf.nama_reseller;
+                    salesSelect.appendChild(option);
+                });
+            } else {
+                // Show all if no cabang selected
+                salesForcesData.forEach(sf => {
                     const option = document.createElement('option');
                     option.value = sf.reseller_id;
                     option.textContent = sf.nama_reseller;
@@ -593,13 +622,22 @@ $conn->close();
             }
         });
         <?php else: ?>
-        // Load all sales forces for user's cabang
-        salesForcesData.forEach(sf => {
-            const option = document.createElement('option');
-            option.value = sf.reseller_id;
-            option.textContent = sf.nama_reseller;
-            document.getElementById('filter_sales_force').appendChild(option);
-        });
+        // Non-Admin: Load sales forces already filtered by cabang from PHP
+        const salesSelect = document.getElementById('filter_sales_force');
+        salesSelect.innerHTML = '<option value="">Pilih Sales Force</option>';
+        
+        if (salesForcesData.length === 0) {
+            console.warn('WARNING: No sales forces found for this cabang!');
+            salesSelect.innerHTML = '<option value="">Tidak ada sales force di cabang ini</option>';
+        } else {
+            salesForcesData.forEach(sf => {
+                const option = document.createElement('option');
+                option.value = sf.reseller_id;
+                option.textContent = sf.nama_reseller;
+                salesSelect.appendChild(option);
+            });
+            console.log('Loaded ' + salesForcesData.length + ' sales forces for cabang <?php echo $user["cabang_id"] ?? ""; ?>');
+        }
         <?php endif; ?>
         
         // Load sales summary from inventory penjualan
@@ -675,8 +713,9 @@ $conn->close();
                     // Add first row
                     addOutletRow();
                     
-                    // Load report
-                    loadReport();
+                    // Show history section and load full report
+                    document.getElementById('history-section').style.display = 'block';
+                    loadFullReport();
                 } else {
                     alert(data.message || 'Tidak ada data penjualan untuk sales force ini pada tanggal tersebut');
                     document.getElementById('sales-summary-section').style.display = 'none';
@@ -1025,6 +1064,108 @@ $conn->close();
             };
             addOutletRow(true, outletData);
         }
+        
+        // Full Report Function - Always Load User's Cabang Data
+        async function loadFullReport() {
+            console.log('=== LOADING FULL REPORT ===');
+            console.log('User role:', '<?php echo $user['role']; ?>');
+            console.log('User cabang_id:', '<?php echo $user['cabang_id'] ?? 'NULL'; ?>');
+            
+            const formData = new FormData();
+            formData.append('action', 'get_full_report');
+            
+            <?php if (in_array($user['role'], ['administrator', 'manager'])): ?>
+            // Admin/Manager: Show all cabang data
+            console.log('Admin/Manager - Loading all cabang data (no cabang filter)');
+            <?php else: ?>
+            // Non-Admin: Filter by user's cabang_id
+            const cabangId = <?php echo $user['cabang_id'] ?? 0; ?>;
+            formData.append('cabang_id', cabangId);
+            console.log('Non-Admin - Filtering by cabang_id:', cabangId);
+            <?php endif; ?>
+            
+            // Debug FormData
+            console.log('FormData contents:');
+            for (let pair of formData.entries()) {
+                console.log(' -', pair[0], '=', pair[1]);
+            }
+            
+            const reportDiv = document.getElementById('report-content');
+            reportDiv.innerHTML = '<p style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+            
+            try {
+                const response = await fetch('ajax_penjualan_outlet.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const responseText = await response.text();
+                console.log('Report raw response:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    console.error('Response was:', responseText);
+                    reportDiv.innerHTML = '<p style="color: #e74c3c; text-align: center; padding: 20px;"><i class="fas fa-exclamation-triangle"></i> Error: Response bukan JSON valid. Check console.</p>';
+                    return;
+                }
+                
+                console.log('Report parsed data:', data);
+                
+                if (data.success && data.data.length > 0) {
+                    let html = '<table class="input-table"><thead><tr>';
+                    html += '<th>Tanggal</th><th>Cabang</th><th>Sales Force</th><th>Produk</th><th>Outlet</th><th>Qty</th><th>Nominal</th><th>Keterangan</th><th>Author</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    let totalQty = 0;
+                    let totalNominal = 0;
+                    
+                    data.data.forEach(item => {
+                        html += '<tr>';
+                        html += '<td>' + item.tanggal + '</td>';
+                        html += '<td>' + (item.nama_cabang || '-') + '</td>';
+                        html += '<td>' + item.nama_reseller + '</td>';
+                        html += '<td>' + item.nama_produk + '</td>';
+                        html += '<td>' + item.nama_outlet + '</td>';
+                        html += '<td>' + item.qty + '</td>';
+                        html += '<td>Rp ' + parseFloat(item.nominal).toLocaleString('id-ID') + '</td>';
+                        html += '<td>' + (item.keterangan || '-') + '</td>';
+                        html += '<td>' + (item.author || '-') + '</td>';
+                        html += '</tr>';
+                        
+                        totalQty += parseInt(item.qty);
+                        totalNominal += parseFloat(item.nominal);
+                    });
+                    
+                    html += '<tr style="background: #f8f9fa; font-weight: bold;">';
+                    html += '<td colspan="5">TOTAL</td>';
+                    html += '<td>' + totalQty + '</td>';
+                    html += '<td>Rp ' + totalNominal.toLocaleString('id-ID') + '</td>';
+                    html += '<td colspan="2"></td>';
+                    html += '</tr>';
+                    html += '</tbody></table>';
+                    
+                    html += '<p style="margin-top: 15px; font-size: 11px; color: #7f8c8d;"><strong>Total Records:</strong> ' + data.data.length + '</p>';
+                    
+                    reportDiv.innerHTML = html;
+                    console.log('Report displayed successfully - ' + data.data.length + ' records');
+                } else {
+                    console.warn('No data or data.success is false:', data);
+                    reportDiv.innerHTML = '<p style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;">Belum ada history input penjualan outlet<?php if (!in_array($user["role"], ["administrator", "manager"])): ?> untuk cabang ini<?php endif; ?></p>';
+                }
+            } catch (error) {
+                console.error('Error loading report:', error);
+                reportDiv.innerHTML = '<p style="color: #e74c3c; text-align: center; padding: 20px;"><i class="fas fa-exclamation-triangle"></i> Terjadi kesalahan saat mengambil data</p>';
+            }
+        }
+        
+        // Auto-load history report on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded - loading history report...');
+            loadFullReport();
+        });
     </script>
     
     <script src="../../assets/js/force-lexend.js"></script>

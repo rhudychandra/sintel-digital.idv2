@@ -127,7 +127,7 @@ if ($action === 'get_sales_summary') {
         exit;
     }
     
-    // Search outlets by name or nomor_rs
+    // Search outlets by name or nomor_rs (show all outlets - PJP and non-PJP)
     $search_param = '%' . $search . '%';
     $stmt = $conn->prepare("
         SELECT 
@@ -141,7 +141,6 @@ if ($action === 'get_sales_summary') {
         FROM outlet
         LEFT JOIN reseller r ON outlet.sales_force_id = r.reseller_id
         WHERE (nama_outlet LIKE ? OR nomor_rs LIKE ? OR city LIKE ?)
-        AND status_outlet = 'PJP'
         ORDER BY nama_outlet
         LIMIT 50
     ");
@@ -155,6 +154,63 @@ if ($action === 'get_sales_summary') {
         $data[] = $row;
     }
     
+    echo json_encode(['success' => true, 'data' => $data]);
+    
+} elseif ($action === 'get_full_report') {
+    $cabang_id = isset($_POST['cabang_id']) && $_POST['cabang_id'] !== '' ? intval($_POST['cabang_id']) : null;
+    
+    error_log("get_full_report - cabang_id: " . ($cabang_id ?? 'NULL'));
+    
+    // Build query with optional cabang filter
+    $query = "
+        SELECT 
+            po.tanggal,
+            COALESCE(c.nama_cabang, cr.nama_cabang) AS nama_cabang,
+            r.nama_reseller,
+            pr.nama_produk,
+            o.nama_outlet,
+            po.qty,
+            po.nominal,
+            po.keterangan,
+            u.username as author
+        FROM penjualan_outlet po
+        JOIN reseller r ON po.sales_force_id = r.reseller_id
+        JOIN produk pr ON po.produk_id = pr.produk_id
+        JOIN outlet o ON po.outlet_id = o.outlet_id
+        LEFT JOIN cabang c ON po.cabang_id = c.cabang_id
+        LEFT JOIN cabang cr ON r.cabang_id = cr.cabang_id
+        LEFT JOIN users u ON po.created_by = u.user_id
+        WHERE 1=1
+    ";
+    
+    if ($cabang_id !== null && $cabang_id > 0) {
+        // Include records explicitly tagged with cabang_id, or legacy records where po.cabang_id is NULL
+        // but reseller's cabang matches the requested cabang
+        $query .= " AND (po.cabang_id = ? OR (po.cabang_id IS NULL AND r.cabang_id = ?))";
+    }
+    
+    $query .= " ORDER BY po.tanggal DESC, r.nama_reseller, pr.nama_produk, o.nama_outlet";
+    
+    $stmt = $conn->prepare($query);
+    
+    if ($cabang_id !== null && $cabang_id > 0) {
+        $stmt->bind_param("ii", $cabang_id, $cabang_id);
+    }
+    
+    if (!$stmt->execute()) {
+        error_log("get_full_report - Execute failed: " . $stmt->error);
+        echo json_encode(['success' => false, 'message' => 'Query execution failed']);
+        exit;
+    }
+    
+    $result = $stmt->get_result();
+    
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    
+    error_log("get_full_report - SUCCESS: " . count($data) . " records found");
     echo json_encode(['success' => true, 'data' => $data]);
     
 } else {
