@@ -766,54 +766,218 @@
 }
 
 @media (max-width: 768px) {
+    /* Fix 2: Inventory sidebar - make it much smaller on mobile */
     .admin-sidebar {
-        width: 70px;
+        width: 50px !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
     }
     
     .admin-main {
-        margin-left: 70px;
+        margin-left: 50px !important;
+        width: calc(100% - 50px) !important;
+    }
+    
+    /* Dashboard filter period responsiveness */
+    .admin-content > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .sidebar-header {
+        padding: 10px 5px !important;
+        text-align: center;
     }
     
     .sidebar-header h2,
     .sidebar-header p,
-    .nav-item span:not(.nav-icon) {
-        display: none;
+    .nav-item span:not(.nav-icon),
+    .sidebar-footer .btn-back,
+    .sidebar-footer .btn-logout {
+        font-size: 0 !important;
+        overflow: hidden !important;
     }
     
     .nav-item {
-        justify-content: center;
-        padding: 15px 10px;
+        justify-content: center !important;
+        padding: 12px 5px !important;
+        margin: 0 !important;
+    }
+    
+    .nav-icon {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        font-size: 22px !important;
+        width: auto !important;
     }
     
     .sidebar-footer {
-        padding: 10px;
+        padding: 5px !important;
     }
     
-    .btn-back,
-    .btn-logout {
-        font-size: 0;
-        padding: 10px;
+    .sidebar-footer .btn-back,
+    .sidebar-footer .btn-logout {
+        font-size: 0 !important;
+        padding: 8px 5px !important;
+        text-align: center !important;
+        min-height: 36px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
     }
     
-    .btn-back::before {
-        content: "←";
-        font-size: 18px;
+    .sidebar-footer .btn-back::before {
+        content: "←" !important;
+        font-size: 20px !important;
+        display: block;
     }
     
-    .btn-logout::before {
-        content: "🚪";
-        font-size: 18px;
+    .sidebar-footer .btn-logout::before {
+        content: "🚪" !important;
+        font-size: 20px !important;
+        display: block;
     }
     
     .admin-header {
-        padding: 20px;
+        padding: 15px;
+    }
+    
+    .admin-header h1 {
+        font-size: 18px;
     }
     
     .admin-content {
-        padding: 20px;
+        padding: 15px;
     }
     
     .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+        gap: 12px;
+        flex-direction: row;
+    }
+    
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 22px;
+    }
+    
+    .stat-info h3 {
+        font-size: 22px;
+    }
+    
+    .stat-info p {
+        font-size: 12px;
+    }
+    
+    /* Make tables scroll horizontally on mobile */
+    .table-container {
+        padding: 15px;
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        min-width: 800px;
+    }
+    
+    /* Canvas chart responsive */
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+    
+    /* Form adjustments */
+    .form-container {
+        padding: 20px 15px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-submit,
+    .btn-cancel {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-sidebar {
+        width: 50px;
+    }
+    
+    .admin-main {
+        margin-left: 50px;
+    }
+    
+    .admin-header {
+        padding: 12px;
+    }
+    
+    .admin-header h1 {
+        font-size: 16px;
+    }
+    
+    .admin-content {
+        padding: 12px;
+    }
+    
+    .nav-item {
+        padding: 10px 5px;
+    }
+    
+    .nav-icon {
+        font-size: 18px;
+    }
+    
+    /* Additional fixes for inventory dashboard mobile */
+    .admin-content form button,
+    .admin-content form a {
+        width: 100%;
+        text-align: center;
+        margin: 5px 0;
+    }
+    
+    .admin-content form > div[style*="flex"] {
+        flex-direction: column;
+    }
+    
+    .menu-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .menu-card {
+        padding: 15px;
+    }
+    
+    .menu-icon {
+        font-size: 28px;
+    }
+    
+    .menu-card h3 {
+        font-size: 16px;
+    }
+    
+    .menu-card p {
+        font-size: 12px;
+    }
+    
+    .quick-actions {
+        padding: 15px;
+    }
+    
+    .action-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .recent-activity {
+        padding: 15px;
     }
 }

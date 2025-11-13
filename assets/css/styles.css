@@ -843,3 +843,59 @@ body {
         margin-bottom: 30px;
     }
 }
+
+/* Mobile-specific fixes for various pages */
+@media (max-width: 768px) {
+    /* Fix 1: Login page - form tidak bisa scroll dan terlalu bawah */
+    .login-page {
+        flex-direction: column;
+        overflow-y: auto;
+        min-height: 100vh;
+    }
+    
+    .login-illustration {
+        min-height: auto;
+        padding: 20px;
+        display: none; /* Hide illustration on mobile to save space */
+    }
+    
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        margin-right: 0;
+    }
+    
+    .login-box {
+        margin-top: 0;
+        padding-top: 80px !important; /* Reduce excessive top padding */
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    .login-box > div[style*="top: -100px"] {
+        top: -60px !important; /* Adjust logo position */
+    }
+    
+    .login-box > div[style*="top: -100px"] img {
+        width: 120px !important;
+        height: 120px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-box {
+        padding-top: 60px !important;
+    }
+    
+    .login-box > div[style*="top: -100px"] {
+        top: -40px !important;
+    }
+    
+    .login-box > div[style*="top: -100px"] img {
+        width: 100px !important;
+        height: 100px !important;
+    }
+}

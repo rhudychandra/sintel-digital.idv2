@@ -695,21 +695,165 @@ $gap_nominal = $setoran_total_nominal - $evidence_total_nominal; // positive mea
         }
 
         @media (max-width: 768px) {
+            /* Fix 3: Finance setoran - header dan filter mobile */
+            .dashboard-header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 0.75rem;
+                position: relative;
+            }
+            
+            .dashboard-header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .dashboard-header > div {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .header-buttons {
+                width: 100%;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            
+            .back-button, .logout-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+            
+            .main-content {
+                padding: 0 1rem;
+                margin: 1rem auto;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+            }
+            
             .content-grid {
                 grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .form-card, .report-card {
+                padding: 1rem;
+            }
+            
+            .card-title {
+                font-size: 1.2rem;
+                margin-bottom: 1rem;
             }
 
             .filter-section {
                 flex-direction: column;
                 align-items: stretch;
+                padding: 1rem;
+                gap: 0.75rem;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+            
+            .filter-btn,
+            .export-btn {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
+            
+            .metrics-bar {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .metric-button {
+                width: 100%;
+                min-width: auto;
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
             }
 
             .data-table {
-                font-size: 0.875rem;
+                font-size: 0.75rem;
+                display: block;
+                overflow-x: auto;
             }
 
             .data-table th, .data-table td {
-                padding: 0.5rem;
+                padding: 0.5rem 0.3rem;
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+            
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            
+            .form-label {
+                font-size: 0.9rem;
+            }
+            
+            .form-input, .form-select {
+                padding: 0.6rem 0.8rem;
+                font-size: 0.9rem;
+            }
+            
+            #sales-summary {
+                overflow-x: auto;
+            }
+            
+            #sales-summary table {
+                min-width: 600px;
+            }
+            
+            /* Evidence filter section responsive */
+            #evidence-filters .filter-group {
+                min-width: 100% !important;
+            }
+            
+            #evidence-filters button {
+                width: 100%;
+            }
+            
+            #evidence-filters > div {
+                flex-direction: column;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .dashboard-header {
+                padding: 0.75rem;
+            }
+            
+            .dashboard-header h1 {
+                font-size: 1rem;
+            }
+            
+            .dashboard-header img {
+                width: 35px !important;
+                height: 35px !important;
+            }
+            
+            .back-button, .logout-button {
+                padding: 0.35rem 0.6rem;
+                font-size: 0.75rem;
+            }
+            
+            .page-title {
+                font-size: 1.25rem;
+            }
+            
+            .card-title {
+                font-size: 1rem;
+            }
+            
+            .data-table th, .data-table td {
+                padding: 0.4rem 0.25rem;
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -1043,20 +1187,19 @@ $gap_nominal = $setoran_total_nominal - $evidence_total_nominal; // positive mea
                 Laporan Evidence Setoran
             </h2>
             <div class="filter-section" style="margin-top: 0;" id="evidence-filters">
-                <div style="display:flex; gap: 0.75rem; align-items:flex-end; flex-wrap: wrap;">
-                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                        <label for="evidence_start_date" class="form-label" style="margin:0; font-size:.9rem; color:var(--text-secondary);">Dari</label>
-                        <input type="date" id="evidence_start_date" class="form-input" style="padding:.4rem .6rem;" value="<?php echo htmlspecialchars($evidence_start_date); ?>">
-                        <label for="evidence_end_date" class="form-label" style="margin-left:.5rem; font-size:.9rem; color:var(--text-secondary);">Sampai</label>
-                        <input type="date" id="evidence_end_date" class="form-input" style="padding:.4rem .6rem;" value="<?php echo htmlspecialchars($evidence_end_date); ?>">
-                        <button type="button" class="export-btn" onclick="filterEvidence()" style="background: var(--accent-color);">
-                            <i class="fas fa-filter"></i> Filter
-                        </button>
+                <div style="display:flex; gap: 0.75rem; align-items:flex-end; flex-wrap: wrap; width: 100%;">
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label for="evidence_start_date" class="form-label" style="margin-bottom: 0.25rem;">Dari</label>
+                        <input type="date" id="evidence_start_date" class="form-input" value="<?php echo htmlspecialchars($evidence_start_date); ?>">
+                    </div>
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label for="evidence_end_date" class="form-label" style="margin-bottom: 0.25rem;">Sampai</label>
+                        <input type="date" id="evidence_end_date" class="form-input" value="<?php echo htmlspecialchars($evidence_end_date); ?>">
                     </div>
                     <?php if ($canSelectCabang): ?>
-                        <div style="display:flex; gap:0.5rem; align-items:center;">
-                            <label for="evidence_cabang" class="form-label" style="margin:0; font-size:.9rem; color:var(--text-secondary);">Cabang</label>
-                            <select id="evidence_cabang" class="form-select" style="padding:.4rem .6rem; min-width:150px;">
+                        <div class="filter-group" style="flex: 1; min-width: 200px;">
+                            <label for="evidence_cabang" class="form-label" style="margin-bottom: 0.25rem;">Cabang</label>
+                            <select id="evidence_cabang" class="form-select">
                                 <option value="">Semua Cabang</option>
                                 <?php foreach ($cabang_options as $c): ?>
                                     <option value="<?php echo htmlspecialchars($c['cabang']); ?>" <?php echo ($evidence_cabang === $c['cabang']) ? 'selected' : ''; ?>>
@@ -1068,17 +1211,22 @@ $gap_nominal = $setoran_total_nominal - $evidence_total_nominal; // positive mea
                     <?php else: ?>
                         <input type="hidden" id="evidence_cabang" value="<?php echo htmlspecialchars($evidence_cabang); ?>">
                     <?php endif; ?>
-                    <button type="button" class="export-btn" onclick="exportEvidenceExcel()">
+                    <button type="button" class="filter-btn" onclick="filterEvidence()" style="background: var(--accent-color); flex-shrink: 0;">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                    <button type="button" class="export-btn" onclick="exportEvidenceExcel()" style="flex: 1; min-width: 120px;">
                         <i class="fas fa-file-excel"></i> Excel
                     </button>
-                    <button type="button" class="export-btn" onclick="exportEvidencePDF()" style="background: var(--secondary-color);">
+                    <button type="button" class="export-btn" onclick="exportEvidencePDF()" style="background: var(--secondary-color); flex: 1; min-width: 120px;">
                         <i class="fas fa-file-pdf"></i> PDF
                     </button>
-                    <button type="button" class="export-btn" onclick="printEvidence()">
-                        <i class="fas fa-print"></i> Print (Full Section)
+                    <button type="button" class="export-btn" onclick="printEvidence()" style="flex: 1; min-width: 120px;">
+                        <i class="fas fa-print"></i> Print
                     </button>
-                    <button type="button" class="export-btn" onclick="printEvidenceOnly()" style="background: var(--accent-color);">
-                        <i class="fas fa-print"></i> Print Evidence Only
+                    <button type="button" class="export-btn" onclick="printEvidenceOnly()" style="background: var(--accent-color); flex: 1; min-width: 120px;">
+                        <i class="fas fa-print"></i> Evidence Only
                     </button>
                 </div>
             </div>

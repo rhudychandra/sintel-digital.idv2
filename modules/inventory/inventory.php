@@ -817,7 +817,27 @@ if ($page === 'dashboard') {
                                             <a href="<?php echo BASE_PATH; ?>/modules/inventory/inventory.php?page=dashboard" class="btn-add" style="margin-top:15px;display:inline-block;">← Kembali ke Dashboard</a>
                                         </div>
                                     <?php else: ?>
-                                        <?php include __DIR__ . '/partials/input_barang.php'; ?>
+                                        <?php 
+                                        $partial_path = __DIR__ . '/partials/input_barang.php';
+                                        if (file_exists($partial_path) && is_readable($partial_path)) {
+                                            include $partial_path;
+                                        } else {
+                                            $error_msg = '<div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; margin: 20px 0;">';
+                                            $error_msg .= '<h3 style="margin-top:0;">⚠️ Error: File tidak dapat dimuat</h3>';
+                                            $error_msg .= '<p><strong>Path:</strong> ' . htmlspecialchars($partial_path) . '</p>';
+                                            $error_msg .= '<p><strong>File exists:</strong> ' . (file_exists($partial_path) ? 'Yes' : 'No') . '</p>';
+                                            $error_msg .= '<p><strong>Is readable:</strong> ' . (is_readable($partial_path) ? 'Yes' : 'No') . '</p>';
+                                            $error_msg .= '<p><strong>Current dir:</strong> ' . htmlspecialchars(__DIR__) . '</p>';
+                                            $error_msg .= '<hr style="margin: 15px 0;">';
+                                            $error_msg .= '<p><strong>Solusi:</strong></p>';
+                                            $error_msg .= '<ol style="margin-left: 20px;">';
+                                            $error_msg .= '<li>Pastikan folder <code>partials/</code> ada di <code>modules/inventory/</code></li>';
+                                            $error_msg .= '<li>Pastikan file <code>input_barang.php</code> ada di folder <code>partials/</code></li>';
+                                            $error_msg .= '<li>Periksa permission file (chmod 644 atau 755)</li>';
+                                            $error_msg .= '</ol></div>';
+                                            echo $error_msg;
+                                        }
+                                        ?>
                                     <?php endif; ?>
                     
                 <?php elseif ($page === 'input_penjualan'): ?>
