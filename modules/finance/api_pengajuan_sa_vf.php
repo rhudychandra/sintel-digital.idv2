@@ -42,9 +42,12 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $insHeader = $conn->prepare("INSERT INTO pengajuan_stock (tanggal, rs_type, outlet_id, requester_id, jenis, warehouse_id, total_qty, total_saldo, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
         $insItem   = $conn->prepare("INSERT INTO pengajuan_stock_items (pengajuan_id, produk_id, qty, harga, nominal) VALUES (?,?,?,?,?)");
+        // Prepared statement to fetch HPP Saldo per produk
+        $stmtHarga = $conn->prepare("SELECT hpp_saldo FROM produk WHERE produk_id = ?");
 
         $created_by = isset($user['user_id']) ? intval($user['user_id']) : 0;
         $saved = 0;
+        $priceCache = [];
 
         foreach ($items as $it) {
             if (empty($it['produk']) || !is_array($it['produk'])) continue;
@@ -55,11 +58,25 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $warehouse_id = intval($it['warehouse_id']);
 
             $total_qty = 0; $total_saldo = 0;
+            $computed = [];
             foreach ($it['produk'] as $p) {
                 $q = intval($p['qty']);
-                $h = floatval($p['harga']);
+                $pid = intval($p['produk_id']);
+                if ($q <= 0 || $pid <= 0) { continue; }
+                // Get HPP Saldo from cache or DB
+                if (array_key_exists($pid, $priceCache)) {
+                    $h = $priceCache[$pid];
+                } else {
+                    $stmtHarga->bind_param('i', $pid);
+                    $stmtHarga->execute();
+                    $resH = $stmtHarga->get_result();
+                    $rowH = $resH ? $resH->fetch_assoc() : null;
+                    $h = $rowH ? floatval($rowH['hpp_saldo']) : 0.0;
+                    $priceCache[$pid] = $h;
+                }
                 $total_qty  += $q;
                 $total_saldo+= ($q * $h);
+                $computed[] = ['produk_id' => $pid, 'qty' => $q, 'harga' => $h];
             }
 
             // tanggal(s), rs_type(s), outlet_id(i), requester_id(i), jenis(s), warehouse_id(i), total_qty(i), total_saldo(d), created_by(i)
@@ -67,12 +84,11 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$insHeader->execute()) throw new Exception('Gagal insert header: '.$conn->error);
             $pengajuan_id = $insHeader->insert_id;
 
-            foreach ($it['produk'] as $p) {
-                $produk_id = intval($p['produk_id']);
-                $qty       = intval($p['qty']);
-                $harga     = floatval($p['harga']);
+            foreach ($computed as $pcalc) {
+                $produk_id = $pcalc['produk_id'];
+                $qty       = $pcalc['qty'];
+                $harga     = $pcalc['harga']; // HPP Saldo
                 $nominal   = $qty * $harga;
-                if ($qty <= 0 || $produk_id <= 0) continue;
                 $insItem->bind_param('iiidd', $pengajuan_id, $produk_id, $qty, $harga, $nominal);
                 if (!$insItem->execute()) throw new Exception('Gagal insert item: '.$conn->error);
             }
@@ -80,6 +96,7 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->commit();
+        if (isset($stmtHarga)) { $stmtHarga->close(); }
         echo json_encode(['ok' => true, 'saved_outlets' => $saved]);
     } catch (Exception $e) {
         $conn->rollback();
@@ -151,7 +168,13 @@ $sql = "SELECT
     o.nomor_rs AS no_rs,
     r.nama_reseller AS requester,
     c2.nama_cabang AS cabang,
-    ps.jenis,
+    CASE 
+        WHEN ps.jenis IN ('NGRS','LinkAja','Finpay') THEN ps.jenis
+        WHEN ps.jenis = '0' OR ps.jenis = 0 THEN 'NGRS'
+        WHEN ps.jenis = '1' OR ps.jenis = 1 THEN 'LinkAja'
+        WHEN ps.jenis = '2' OR ps.jenis = 2 THEN 'Finpay'
+        ELSE ps.jenis
+    END AS jenis,
     c1.nama_cabang AS warehouse,
     p.nama_produk AS produk,
     psi.qty,

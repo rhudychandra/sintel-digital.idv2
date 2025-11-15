@@ -102,15 +102,15 @@ try {
     while ($row = $rs->fetch_assoc()) { $outlets[] = $row; }
 } catch (Exception $e) { /* ignore */ }
 
-// Get products based on RS type
+// Get products based on RS type (use HPP Saldo as price base)
 $produk_list = [];
 try {
     if ($rs_filter === 'sa') {
-        // Produk untuk RS Eksekusi SA: Perdana Internet Lite & ByU
-        $stmt = $conn->prepare("SELECT produk_id, nama_produk, harga FROM produk WHERE status='active' AND kategori IN ('Perdana Internet Lite','Perdana Internet ByU') ORDER BY nama_produk");
+        // Produk untuk RS Eksekusi SA: gunakan HPP Saldo sebagai harga dasar
+        $stmt = $conn->prepare("SELECT produk_id, nama_produk, hpp_saldo AS harga FROM produk WHERE status='active' AND kategori IN ('Perdana Internet Lite','Perdana Internet ByU') ORDER BY nama_produk");
     } else {
-        // Produk untuk RS Eksekusi Voucher: Voucher Fisik Internet
-        $stmt = $conn->prepare("SELECT produk_id, nama_produk, harga FROM produk WHERE status='active' AND kategori LIKE '%Voucher%Internet%' ORDER BY nama_produk");
+        // Produk untuk RS Eksekusi Voucher: gunakan HPP Saldo juga sebagai harga dasar
+        $stmt = $conn->prepare("SELECT produk_id, nama_produk, hpp_saldo AS harga FROM produk WHERE status='active' AND kategori LIKE '%Voucher%Internet%' ORDER BY nama_produk");
     }
     $stmt->execute();
     $res = $stmt->get_result();
@@ -149,6 +149,9 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
     <link rel="stylesheet" href="../../assets/css/admin-styles.css">
     <style>
         body { font-family: 'Lexend', sans-serif; background: #f8f9fa; margin: 0; padding: 0; }
+        /* Ensure page can scroll vertically regardless of global CSS */
+        html, body { height: auto; min-height: 100%; overflow-y: auto !important; }
+        .submenu-main { position: static !important; overflow-y: visible !important; height: auto !important; min-height: auto !important; padding-bottom: 160px; }
         
         /* Filter Section */
         .filter-section { background: #fff; padding: 20px; margin: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -628,6 +631,23 @@ function addOutletRowFromData(o){
         </td>
     `;
     tbody.appendChild(tr);
+
+    // If there are already product columns, add qty inputs for this new row
+    const productHeaders = document.querySelectorAll('#mainTable thead th.produk-col');
+    if (productHeaders.length) {
+        productHeaders.forEach(th => {
+            const colId = th.getAttribute('data-col-id');
+            const sel = th.querySelector('.produk-header-select');
+            const prodId = sel && sel.value ? sel.value : '';
+            const harga = sel && sel.value ? parseFloat(sel.options[sel.selectedIndex].getAttribute('data-harga') || '0') : 0;
+            const td = document.createElement('td');
+            td.className = 'produk-input';
+            td.setAttribute('data-col-id', colId);
+            td.innerHTML = `<input type="number" class="qty-input" min="0" value="0" data-produk-id="${prodId}" data-harga="${harga}" oninput="recalcRow(this)">`;
+            const sumCell = tr.querySelector('.total-qty');
+            tr.insertBefore(td, sumCell);
+        });
+    }
 }
 
 function removeOutletRow(btn){
