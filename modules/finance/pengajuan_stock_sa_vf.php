@@ -12,6 +12,9 @@ if (!in_array($user['role'], ['administrator','manager','finance'])) {
 
 $conn = getDBConnection();
 
+// Minimal debug toggle via URL: ?debug=1
+$DEBUG = isset($_GET['debug']) && $_GET['debug'] == '1';
+
 // Utilities: check column existence quickly
 function table_has_column($conn, $table, $column) {
     try {
@@ -33,16 +36,31 @@ try {
 // Get Requester (reseller) options
 $requester_list = [];
 $has_kategori = table_has_column($conn, 'reseller', 'kategori');
+$_reseller_sql = "SELECT reseller_id, nama_reseller, cabang_id, kategori FROM reseller WHERE status='active' AND kategori IN ('General Manager','Manager','Supervisor','Player/Pemain') ORDER BY nama_reseller";
 try {
-    if ($has_kategori) {
-        $stmt = $conn->prepare("SELECT reseller_id, nama_reseller, cabang_id, kategori FROM reseller WHERE status='active' AND kategori IN ('General Manager','Manager','Supervisor','Player','Player/Pemain','Pemain') ORDER BY nama_reseller");
-        $stmt->execute();
-        $res = $stmt->get_result();
-    } else {
-        $res = $conn->query("SELECT reseller_id, nama_reseller, cabang_id FROM reseller WHERE status='active' ORDER BY nama_reseller");
-    }
+    // Always try filtered query first
+    $stmt = $conn->prepare($_reseller_sql);
+    $stmt->execute();
+    $res = $stmt->get_result();
     while ($row = $res->fetch_assoc()) { $requester_list[] = $row; }
-} catch (Exception $e) { /* ignore */ }
+} catch (Exception $e) {
+    // Fallback: if filtered query fails (e.g., column missing), show active resellers
+    $_reseller_sql = "SELECT reseller_id, nama_reseller, cabang_id FROM reseller WHERE status='active' ORDER BY nama_reseller";
+    try {
+        $res = $conn->query($_reseller_sql);
+        while ($row = $res->fetch_assoc()) { $requester_list[] = $row; }
+    } catch (Exception $e2) { /* ignore */ }
+}
+
+if ($DEBUG) {
+    $cats = [];
+    foreach ($requester_list as $r) {
+        if (isset($r['kategori']) && $r['kategori'] !== null && $r['kategori'] !== '') {
+            $cats[$r['kategori']] = true;
+        }
+    }
+    echo "<!-- ResellerDebug has_kategori=" . ($has_kategori ? '1' : '0') . " count=" . count($requester_list) . " sql=" . htmlspecialchars($_reseller_sql) . " cats=" . htmlspecialchars(implode(',', array_keys($cats))) . " -->";
+}
 
 // Cabang name map
 $cabang_map = [];
@@ -79,8 +97,7 @@ try {
     }
 
     $sql = $base . (count($conds) ? (' AND ' . implode(' AND ', $conds)) : '') . " ORDER BY nama_outlet";
-    // Debug: uncomment to see query
-    echo "<!-- Query: " . htmlspecialchars($sql) . " -->";
+    if ($DEBUG) { echo "<!-- OutletQuery: " . htmlspecialchars($sql) . " -->"; }
     $rs = $conn->query($sql);
     while ($row = $rs->fetch_assoc()) { $outlets[] = $row; }
 } catch (Exception $e) { /* ignore */ }
@@ -102,6 +119,18 @@ try {
     }
     $stmt->close();
 } catch (Exception $e) { /* ignore */ }
+
+// Build outlet list for JS (with unified wilayah)
+$outlet_js_list = [];
+foreach ($outlets as $o) {
+    $outlet_js_list[] = [
+        'outlet_id' => $o['outlet_id'],
+        'nama_outlet' => $o['nama_outlet'],
+        'nomor_rs' => $o['nomor_rs'] ?? '',
+        'id_digipos' => $o['id_digipos'] ?? '',
+        'wilayah' => $has_kabupaten ? ($o['kabupaten'] ?? '-') : ($o['city'] ?? '-')
+    ];
+}
 
 $conn->close();
 
@@ -142,7 +171,7 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
         /* Data Table */
         table.data-table { border-collapse: collapse; table-layout: auto; display: table; }
         .data-table thead { background: #8B1538; color: #fff; }
-        .data-table th { padding: 14px 10px; text-align: left; font-weight: 600; font-size: 13px; white-space: nowrap; position: sticky; top: 0; z-index: 10; min-width: 100px; background: #8B1538; }
+        .data-table th { padding: 14px 10px; text-align: left; font-weight: 600; font-size: 13px; white-space: nowrap; position: sticky; top: 0; z-index: 10; min-width: 100px; background: #8B1538; color:#fff; }
         .data-table td { padding: 10px; border-bottom: 1px solid #eef2f4; font-size: 13px; vertical-align: middle; white-space: nowrap; background: #fff; }
         .data-table tbody tr:hover { background: #f8f9fa; }
         .data-table tbody tr:hover td { background: #f8f9fa; }
@@ -217,9 +246,83 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
         
         /* Empty State */
         .empty-state { text-align: center; padding: 40px; color: #7f8c8d; font-size: 14px; }
+
+        /* Modern Alert */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            border: 1px solid #4a4a70;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 80px rgba(74, 144, 226, 0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #82aaff;
+            font-weight: 600;
+            font-size: 20px;
+        }
+        .modal-content p {
+            margin: 15px 0 25px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .modal-button {
+            background: linear-gradient(135deg, #4a90e2 0%, #82aaff 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+        }
+        .modal-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.6);
+        }
     </style>
 </head>
 <body class="submenu-page">
+
+<!-- Modern Alert Modal -->
+<div id="modernAlert" class="modal-overlay">
+    <div class="modal-content">
+        <h3 id="modernAlertTitle">Pemberitahuan</h3>
+        <p id="modernAlertMessage"></p>
+        <button id="modernAlertButton" class="modal-button">OK</button>
+    </div>
+</div>
+
 <header class="dashboard-header">
     <div style="display:flex; align-items:center; gap:15px;">
         <img src="../../assets/images/logo_icon.png" alt="Logo" style="width:50px;height:50px;border-radius:10px;object-fit:contain;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
@@ -254,8 +357,31 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
     </div>
 
     <!-- Row 2: Table controls -->
-    <div class="table-actions" style="display:flex; justify-content:flex-end; gap:10px; margin: 0 20px 8px;">
-        <button class="btn btn-add" onclick="addProductColumn()">+ Tambah Produk</button>
+    <div class="table-actions" style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin: 0 20px 8px;">
+        <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+            <div class="filter-field">
+                <label>Pilih RS Eksekusi (<?php echo $rs_filter==='sa'?'SA':'Voucher'; ?>)</label>
+                <select id="rsSelect" style="min-width:360px; padding:10px 14px; border:2px solid #e9ecef; border-radius:8px;">
+                    <option value="">- Pilih RS -</option>
+<?php foreach ($outlet_js_list as $o): ?>
+                    <option value="<?php echo $o['outlet_id']; ?>">
+                        <?php echo htmlspecialchars($o['nama_outlet']); ?>
+                        <?php if (!empty($o['nomor_rs'])): ?>
+                            (No RS: <?php echo htmlspecialchars($o['nomor_rs']); ?>)
+                        <?php endif; ?>
+                        <?php if (!empty($o['id_digipos'])): ?>
+                            - ID: <?php echo htmlspecialchars($o['id_digipos']); ?>
+                        <?php endif; ?>
+                        - <?php echo htmlspecialchars($o['wilayah']); ?>
+                    </option>
+<?php endforeach; ?>
+                </select>
+            </div>
+            <button class="btn btn-add" onclick="addSelectedOutlet()">+ Tambah</button>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" onclick="addProductColumn()">+ Tambah Kolom Produk</button>
+        </div>
     </div>
 
     <!-- Row 3: Table only (vertical layout) -->
@@ -277,56 +403,11 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
                 </tr>
             </thead>
             <tbody id="tableBody">
-<?php if (!empty($outlets)): ?>
-<?php foreach ($outlets as $outlet): ?>
-                <tr data-outlet-id="<?php echo $outlet['outlet_id']; ?>" class="outlet-row">
-                    <td><strong><?php echo htmlspecialchars($outlet['nama_outlet']); ?></strong></td>
-                    <td><?php echo htmlspecialchars($outlet['nomor_rs'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($outlet['id_digipos'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($has_kabupaten ? ($outlet['kabupaten'] ?? '-') : ($outlet['city'] ?? '-')); ?></td>
-                    <td>
-                        <select class="requester-select" onchange="updateCabang(this)">
-                            <option value="">- Pilih -</option>
-<?php foreach ($requester_list as $req): ?>
-                            <option value="<?php echo $req['reseller_id']; ?>" 
-                                data-cabang-id="<?php echo $req['cabang_id'] ?? 0; ?>" 
-                                data-cabang="<?php echo htmlspecialchars($cabang_map[$req['cabang_id']] ?? '-'); ?>">
-                                <?php echo htmlspecialchars($req['nama_reseller']); ?>
-                                <?php if (!empty($req['kategori'])): ?>
-                                    (<?php echo htmlspecialchars($req['kategori']); ?>)
-                                <?php endif; ?>
-                            </option>
-<?php endforeach; ?>
-                        </select>
-                    </td>
-                    <td class="cabang-cell"><span class="badge">-</span></td>
-                    <td>
-                        <select class="jenis-select">
-                            <option value="NGRS">NGRS</option>
-                            <option value="LinkAja">LinkAja</option>
-                            <option value="Finpay">Finpay</option>
-                        </select>
-                    </td>
-                    <td>
-                        <select class="warehouse-select">
-                            <option value="">- Pilih -</option>
-<?php foreach ($cabang_list as $cab): ?>
-                            <option value="<?php echo $cab['cabang_id']; ?>"><?php echo htmlspecialchars($cab['nama_cabang']); ?></option>
-<?php endforeach; ?>
-                        </select>
-                    </td>
-                    <td class="total-qty" style="font-weight:700; color:#2c3e50;">0</td>
-                    <td class="total-saldo" style="font-weight:700; color:#8B1538;">Rp 0</td>
-                    <td class="aksi-cell">-</td>
-                </tr>
-<?php endforeach; ?>
-<?php else: ?>
                 <tr>
                     <td colspan="11" class="empty-state">
-                        Tidak ada RS Eksekusi <?php echo $rs_filter === 'sa' ? 'SA' : 'Voucher'; ?> ditemukan.
+                        Belum ada RS di daftar. Klik "Tambah RS Eksekusi" untuk menambahkan.
                     </td>
                 </tr>
-<?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -348,7 +429,100 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
     <!-- Row 4: Submit button at the bottom -->
     <div class="summary-box" style="margin-top: 0;">
         <div class="action-buttons">
-            <button class="btn btn-primary" onclick="simpanPengajuan()">💾 Simpan Pengajuan (Preview)</button>
+            <button class="btn btn-primary" onclick="simpanPengajuan()">💾 Simpan Pengajuan</button>
+        </div>
+    </div>
+
+    <!-- History Section: Riwayat Input Pengajuan Stock -->
+    <div class="summary-box" style="margin-top: 16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+            <h3 class="section-title" style="margin:0;">History Input Pengajuan Stock</h3>
+            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap;">
+                <div class="filter-field">
+                    <label>Dari</label>
+                    <input type="date" id="histFrom">
+                </div>
+                <div class="filter-field">
+                    <label>Sampai</label>
+                    <input type="date" id="histTo">
+                </div>
+                <div class="filter-field">
+                    <label>Requester</label>
+                    <select id="histRequester" style="min-width:200px; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        <option value="">Semua</option>
+<?php foreach ($requester_list as $req): ?>
+                        <option value="<?php echo $req['reseller_id']; ?>"><?php echo htmlspecialchars($req['nama_reseller']); ?></option>
+<?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Cabang</label>
+                    <select id="histCabang" style="min-width:160px; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        <option value="">Semua</option>
+<?php foreach ($cabang_list as $cab): ?>
+                        <option value="<?php echo $cab['cabang_id']; ?>"><?php echo htmlspecialchars($cab['nama_cabang']); ?></option>
+<?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Warehouse</label>
+                    <select id="histWarehouse" style="min-width:160px; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        <option value="">Semua</option>
+<?php foreach ($cabang_list as $cab): ?>
+                        <option value="<?php echo $cab['cabang_id']; ?>"><?php echo htmlspecialchars($cab['nama_cabang']); ?></option>
+<?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Produk</label>
+                    <select id="histProduk" style="min-width:200px; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        <option value="">Semua</option>
+<?php foreach ($produk_list as $p): ?>
+                        <option value="<?php echo $p['produk_id']; ?>"><?php echo htmlspecialchars($p['nama_produk']); ?></option>
+<?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label>Limit</label>
+                    <select id="histLimit" style="min-width:100px; padding: 10px 14px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        <option value="50">50</option>
+                        <option value="100" selected>100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+                <button class="btn" style="background:#ecf0f1; color:#2c3e50;" onclick="applyHistoryFilter()">Terapkan</button>
+                <button class="btn" style="background:#ecf0f1; color:#2c3e50;" onclick="refreshHistory()">↻ Refresh</button>
+                <button class="btn" style="background:#e8f7ff; color:#0b5ed7;" onclick="exportHistoryCsv()">⬇ Export CSV</button>
+                <button class="btn" style="background:#ffe9ec; color:#8B1538;" onclick="clearHistory()">🗑 Hapus History (Local)</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th style="width: 110px;">Tanggal</th>
+                        <th style="width: 200px;">RS Eksekusi</th>
+                        <th style="width: 100px;">No RS</th>
+                        <th style="width: 200px;">Produk</th>
+                        <th style="width: 80px;">Qty</th>
+                        <th style="width: 130px;">Nominal</th>
+                        <th style="width: 180px;">Requester</th>
+                        <th style="width: 140px;">Cabang</th>
+                        <th style="width: 100px;">Jenis</th>
+                        <th style="width: 150px;">Warehouse</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr><td colspan="9" style="text-align:center; color:#7f8c8d;">Belum ada history pengajuan.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <div id="historyMeta" style="font-size:12px; color:#7f8c8d;">&nbsp;</div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn" id="btnPrev" style="background:#ecf0f1; color:#2c3e50;" onclick="prevHistoryPage()">← Sebelumnya</button>
+                <button class="btn" id="btnNext" style="background:#ecf0f1; color:#2c3e50;" onclick="nextHistoryPage()">Berikutnya →</button>
+            </div>
         </div>
     </div>
     </div>
@@ -358,6 +532,23 @@ $page_title = 'Pengajuan Stock Eksekusi SA & VF';
 // Produk list dari PHP
 const produkList = <?php echo json_encode($produk_list); ?>;
 const rsType = '<?php echo $rs_filter; ?>';
+const requesterList = <?php echo json_encode($requester_list); ?>;
+const cabangList = <?php echo json_encode($cabang_list); ?>;
+const outletList = <?php echo json_encode($outlet_js_list); ?>;
+
+function showModernAlert(message, title = 'Pemberitahuan') {
+    document.getElementById('modernAlertTitle').textContent = title;
+    document.getElementById('modernAlertMessage').innerHTML = message; // Use innerHTML to render <br> etc.
+    const overlay = document.getElementById('modernAlert');
+    overlay.classList.add('visible');
+    
+    const closeButton = document.getElementById('modernAlertButton');
+    const closeHandler = () => {
+        overlay.classList.remove('visible');
+        closeButton.removeEventListener('click', closeHandler);
+    };
+    closeButton.addEventListener('click', closeHandler);
+}
 
 function rupiah(n) {
     return 'Rp ' + Math.round(n).toLocaleString('id-ID');
@@ -366,6 +557,93 @@ function rupiah(n) {
 function changeRsType() {
     const val = document.getElementById('filterRsType').value;
     window.location.href = '?rs_type=' + val;
+}
+
+function addSelectedOutlet(){
+    const sel = document.getElementById('rsSelect');
+    const val = sel.value;
+    if (!val){ showModernAlert('Pilih RS terlebih dahulu'); return; }
+    const found = outletList.find(o => String(o.outlet_id) === String(val));
+    if (!found){ showModernAlert('RS tidak ditemukan'); return; }
+    addOutletRowFromData(found);
+}
+
+function outletExists(outletId){
+    return !!document.querySelector(`tr.outlet-row[data-outlet-id="${outletId}"]`);
+}
+
+function requesterOptionsHtml(){
+    let html = '<option value="">- Pilih -</option>';
+    requesterList.forEach(req => {
+        const cabangName = (req.cabang_id && cabangList?.find ? (cabangList.find(c=>c.cabang_id==req.cabang_id)?.nama_cabang||'-') : (<?php echo json_encode($cabang_map); ?>[req.cabang_id]||'-'));
+        const label = req.nama_reseller + (req.kategori? (' ('+req.kategori+')') : '');
+        html += `<option value="${req.reseller_id}" data-cabang-id="${req.cabang_id||0}" data-cabang="${cabangName?escapeHtml(cabangName):'-'}">${escapeHtml(label)}</option>`;
+    });
+    return html;
+}
+
+function cabangOptionsHtml(){
+    let html = '<option value="">- Pilih -</option>';
+    cabangList.forEach(c => { html += `<option value="${c.cabang_id}">${escapeHtml(c.nama_cabang)}</option>`; });
+    return html;
+}
+
+function addOutletRowFromData(o){
+    if (outletExists(o.outlet_id)) { showModernAlert('RS sudah ada di daftar.'); return; }
+    const tbody = document.getElementById('tableBody');
+    // Remove empty-state row if exists
+    const empty = tbody.querySelector('.empty-state');
+    if (empty) empty.closest('tr').remove();
+
+    const tr = document.createElement('tr');
+    tr.className = 'outlet-row';
+    tr.setAttribute('data-outlet-id', o.outlet_id);
+    tr.innerHTML = `
+        <td><strong>${escapeHtml(o.nama_outlet||'-')}</strong></td>
+        <td>${escapeHtml(o.nomor_rs||'-')}</td>
+        <td>${escapeHtml(o.id_digipos||'-')}</td>
+        <td>${escapeHtml(o.wilayah||'-')}</td>
+        <td>
+            <select class="requester-select" onchange="updateCabang(this)">
+                ${requesterOptionsHtml()}
+            </select>
+        </td>
+        <td class="cabang-cell"><span class="badge">-</span></td>
+        <td>
+            <select class="jenis-select">
+                <option value="NGRS">NGRS</option>
+                <option value="LinkAja">LinkAja</option>
+                <option value="Finpay">Finpay</option>
+            </select>
+        </td>
+        <td>
+            <select class="warehouse-select">
+                ${cabangOptionsHtml()}
+            </select>
+        </td>
+        <td class="total-qty" style="font-weight:700; color:#2c3e50;">0</td>
+        <td class="total-saldo" style="font-weight:700; color:#8B1538;">Rp 0</td>
+        <td class="aksi-cell">
+            <button class="btn btn-remove" onclick="removeOutletRow(this)">✕ Hapus RS</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function removeOutletRow(btn){
+    const row = btn.closest('tr');
+    const outletId = row.getAttribute('data-outlet-id');
+    // Hapus produk rows terkait
+    document.querySelectorAll(`tr[data-parent-outlet="${outletId}"]`).forEach(r=> r.remove());
+    row.remove();
+    updateGrandTotals();
+    // Jika kosong, tampilkan empty state
+    const tbody = document.getElementById('tableBody');
+    if (!tbody.querySelector('tr.outlet-row')){
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="11" class="empty-state">Belum ada RS di daftar. Klik "Tambah RS Eksekusi" untuk menambahkan.</td>';
+        tbody.appendChild(tr);
+    }
 }
 
 function updateCabang(select) {
@@ -578,13 +856,26 @@ function removeProdukRow(btn) {
     updateOutletTotals(outletId);
 }
 
-function simpanPengajuan() {
+async function simpanPengajuan() {
     const tanggal = document.getElementById('tanggalPengajuan').value;
     const data = {
         tanggal: tanggal,
         rs_type: rsType,
         items: []
     };
+
+    const productHeaders = {};
+    document.querySelectorAll('th.produk-col').forEach(th => {
+        const colId = th.getAttribute('data-col-id');
+        const sel = th.querySelector('.produk-header-select');
+        if (sel && sel.value) {
+            productHeaders[colId] = {
+                id: sel.value,
+                nama: sel.options[sel.selectedIndex].text,
+                harga: parseFloat(sel.options[sel.selectedIndex].getAttribute('data-harga') || 0)
+            };
+        }
+    });
     
     document.querySelectorAll('.outlet-row').forEach(outletRow => {
         const outletId = outletRow.getAttribute('data-outlet-id');
@@ -592,60 +883,244 @@ function simpanPengajuan() {
         const jenis = outletRow.querySelector('.jenis-select').value;
         const warehouse = outletRow.querySelector('.warehouse-select').value;
         
-        // Get all product rows for this outlet
-        const produkRows = document.querySelectorAll(`tr[data-parent-outlet="${outletId}"]`);
-        
-        if (produkRows.length > 0 && requester && warehouse) {
-            const produkData = [];
-            produkRows.forEach(pRow => {
-                const produkSelect = pRow.querySelector('.produk-select');
-                const qtyInput = pRow.querySelector('.qty-input');
-                const produkId = produkSelect.value;
-                const qty = parseInt(qtyInput.value || 0);
-                
-                if (produkId && qty > 0) {
-                    produkData.push({
-                        produk_id: produkId,
-                        produk_name: produkSelect.options[produkSelect.selectedIndex].text,
-                        qty: qty,
-                        harga: parseFloat(qtyInput.getAttribute('data-harga'))
-                    });
-                }
-            });
+        const produkData = [];
+        outletRow.querySelectorAll('td.produk-input .qty-input').forEach(input => {
+            const qty = parseInt(input.value || '0');
+            const colId = input.closest('td').getAttribute('data-col-id');
+            const header = productHeaders[colId];
             
-            if (produkData.length > 0) {
-                data.items.push({
-                    outlet_id: outletId,
-                    outlet_name: outletRow.children[0].textContent.trim(),
-                    no_rs: outletRow.children[1].textContent.trim(),
-                    id_digipos: outletRow.children[2].textContent.trim(),
-                    kabupaten: outletRow.children[3].textContent.trim(),
-                    requester_id: requester,
-                    jenis: jenis,
-                    warehouse_id: warehouse,
-                    produk: produkData
+            if (qty > 0 && header) {
+                produkData.push({
+                    produk_id: header.id,
+                    produk_name: header.nama,
+                    qty: qty,
+                    harga: header.harga
                 });
             }
+        });
+
+        if (produkData.length > 0 && requester && warehouse) {
+            data.items.push({
+                outlet_id: outletId,
+                outlet_name: outletRow.children[0].textContent.trim(),
+                no_rs: outletRow.children[1].textContent.trim(),
+                id_digipos: outletRow.children[2].textContent.trim(),
+                kabupaten: outletRow.children[3].textContent.trim(),
+                requester_id: requester,
+                jenis: jenis,
+                warehouse_id: warehouse,
+                produk: produkData
+            });
         }
     });
     
     if (data.items.length === 0) {
-        alert('Tidak ada data yang diinput. Pastikan telah mengisi Requester, Warehouse, dan menambahkan produk dengan qty > 0.');
+        showModernAlert('Tidak ada data yang diinput. Pastikan telah mengisi Requester, Warehouse, dan menambahkan produk dengan qty > 0.');
         return;
     }
     
-    console.log('Data Pengajuan:', data);
-    alert(`Preview Pengajuan:\n\nTanggal: ${tanggal}\nJenis: ${rsType === 'sa' ? 'RS Eksekusi SA' : 'RS Eksekusi Voucher'}\nTotal Outlet: ${data.items.length}\n\nData siap disimpan ke database.`);
-    
-    // TODO: Send to server via AJAX
-    // Example:
-    // fetch('save_pengajuan.php', {
-    //     method: 'POST',
-    //     headers: {'Content-Type': 'application/json'},
-    //     body: JSON.stringify(data)
-    // }).then(response => response.json())
-    //   .then(result => { ... });
+    // Simpan ke server
+    try {
+        const resp = await fetch('api_pengajuan_sa_vf.php?action=save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        if (!result.ok) throw new Error(result.error || 'Gagal menyimpan');
+        showModernAlert(`Berhasil menyimpan pengajuan untuk ${result.saved_outlets} outlet.`, 'Sukses');
+        // Muat ulang history dari server
+        await loadHistoryFromServer();
+    } catch (e) {
+        showModernAlert('Gagal menyimpan ke server: ' + e.message + '<br>Data akan disimpan sementara di browser.', 'Error');
+        // Fallback ke history lokal
+        appendToLocalHistory(data);
+        renderHistoryFromLocal();
+    }
 }
+
+// ====== History (Server + Local Fallback) ======
+const LS_KEY_HISTORY = 'pengajuan_sa_vf_history';
+
+let historyPage = 1;
+let historyHasMore = false;
+let lastHistoryItems = [];
+
+async function loadHistoryFromServer(page = 1) {
+    try {
+        const from = document.getElementById('histFrom').value || '';
+        const to = document.getElementById('histTo').value || '';
+        const limit = parseInt(document.getElementById('histLimit').value || '100', 10);
+        const requester = document.getElementById('histRequester').value || '';
+        const cabang = document.getElementById('histCabang').value || '';
+        const warehouse = document.getElementById('histWarehouse').value || '';
+        const produk = document.getElementById('histProduk').value || '';
+        const params = new URLSearchParams({ action: 'list', rs_type: rsType, limit: String(limit), page: String(page) });
+        if (from) params.append('from', from);
+        if (to) params.append('to', to);
+        if (requester) params.append('requester_id', requester);
+        if (cabang) params.append('cabang_id', cabang);
+        if (warehouse) params.append('warehouse_id', warehouse);
+        if (produk) params.append('produk_id', produk);
+        const resp = await fetch(`api_pengajuan_sa_vf.php?${params.toString()}`);
+        const data = await resp.json();
+        if (!data.ok) throw new Error(data.error || 'Gagal memuat history');
+        historyPage = data.page || page;
+        historyHasMore = !!data.has_more;
+        lastHistoryItems = data.items || [];
+        renderHistoryFromServer(lastHistoryItems);
+        updateHistoryPager();
+    } catch (e) {
+        // fallback ke local
+        renderHistoryFromLocal();
+    }
+}
+
+function renderHistoryFromServer(items) {
+    const body = document.getElementById('historyBody');
+    if (!items.length) {
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#7f8c8d;">Belum ada history pengajuan.</td></tr>';
+        return;
+    }
+    body.innerHTML = items.map(r => `
+        <tr>
+            <td>${escapeHtml(r.tanggal || '-')}</td>
+            <td>${escapeHtml(r.rs_eksekusi || '-')}</td>
+            <td>${escapeHtml(r.no_rs || '-')}</td>
+            <td>${escapeHtml(r.produk || '-')}</td>
+            <td>${(parseInt(r.qty||0)).toLocaleString('id-ID')}</td>
+            <td>${rupiah(parseFloat(r.nominal||0))}</td>
+            <td>${escapeHtml(r.requester || '-')}</td>
+            <td>${escapeHtml(r.cabang || '-')}</td>
+            <td>${escapeHtml(r.jenis || '-')}</td>
+            <td>${escapeHtml(r.warehouse || '-')}</td>
+        </tr>
+    `).join('');
+}
+
+function updateHistoryPager() {
+    const meta = document.getElementById('historyMeta');
+    meta.textContent = `Halaman ${historyPage} • Baris: ${lastHistoryItems.length}`;
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    btnPrev.disabled = historyPage <= 1;
+    btnNext.disabled = !historyHasMore;
+    btnPrev.style.opacity = btnPrev.disabled ? 0.5 : 1;
+    btnNext.style.opacity = btnNext.disabled ? 0.5 : 1;
+}
+
+function prevHistoryPage() { if (historyPage > 1) loadHistoryFromServer(historyPage - 1); }
+function nextHistoryPage() { if (historyHasMore) loadHistoryFromServer(historyPage + 1); }
+function applyHistoryFilter() { loadHistoryFromServer(1); }
+function exportHistoryCsv() {
+    const headers = ['Tanggal','RS Eksekusi','No RS','Produk','Qty','Nominal','Requester','Cabang','Jenis','Warehouse'];
+    const rows = lastHistoryItems.map(r => [
+        r.tanggal || '-',
+        r.rs_eksekusi || '-',
+        r.no_rs || '-',
+        r.produk || '-',
+        String(parseInt(r.qty||0)),
+        String(Math.round(parseFloat(r.nominal||0))),
+        r.requester || '-',
+        r.cabang || '-',
+        r.jenis || '-',
+        r.warehouse || '-'
+    ]);
+    const csv = [headers].concat(rows).map(arr => arr.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `history_pengajuan_${rsType}_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function appendToLocalHistory(payload) {
+    // payload: { tanggal, rs_type, items: [ { outlet_id, outlet_name, no_rs, id_digipos, requester_id, jenis, warehouse_id, produk:[{produk_id, produk_name, qty, harga}]} ] }
+    const now = new Date().toISOString();
+    const existing = JSON.parse(localStorage.getItem(LS_KEY_HISTORY) || '[]');
+
+    // Flatten per-produk untuk memudahkan render
+    const rows = [];
+    payload.items.forEach(item => {
+        // Get requester and warehouse text from DOM per outlet row
+        const outletRow = document.querySelector(`tr.outlet-row[data-outlet-id="${item.outlet_id}"]`);
+        let requesterText = '';
+        let cabangText = '';
+        let warehouseText = '';
+        if (outletRow) {
+            const reqSelect = outletRow.querySelector('.requester-select');
+            requesterText = reqSelect && reqSelect.selectedIndex > 0 ? reqSelect.options[reqSelect.selectedIndex].text.replace(/\s*\([^)]*\)\s*$/, '').trim() : '';
+            const cabangCell = outletRow.querySelector('.cabang-cell');
+            cabangText = cabangCell ? (cabangCell.textContent || '').trim() : '';
+            const whSelect = outletRow.querySelector('.warehouse-select');
+            warehouseText = whSelect && whSelect.selectedIndex > 0 ? whSelect.options[whSelect.selectedIndex].text.trim() : '';
+        }
+
+        item.produk.forEach(p => {
+            rows.push({
+                ts: now,
+                tanggal: payload.tanggal,
+                rs_type: payload.rs_type,
+                outlet_name: item.outlet_name,
+                no_rs: item.no_rs,
+                produk_name: p.produk_name,
+                qty: p.qty,
+                nominal: Math.round((p.harga || 0) * p.qty),
+                requester: requesterText,
+                cabang: cabangText || '-',
+                jenis: item.jenis,
+                warehouse: warehouseText
+            });
+        });
+    });
+
+    localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(existing.concat(rows)));
+}
+
+function renderHistoryFromLocal() {
+    const body = document.getElementById('historyBody');
+    const list = JSON.parse(localStorage.getItem(LS_KEY_HISTORY) || '[]');
+    if (!list.length) {
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#7f8c8d;">Belum ada history pengajuan.</td></tr>';
+        return;
+    }
+    // Render terbaru dulu (descending by ts)
+    list.sort((a,b) => (a.ts < b.ts ? 1 : -1));
+    body.innerHTML = list.map(r => `
+        <tr>
+            <td>${escapeHtml(r.outlet_name || '-')}</td>
+            <td>${escapeHtml(r.no_rs || '-')}</td>
+            <td>${escapeHtml(r.produk_name || '-')}</td>
+            <td>${(r.qty||0).toLocaleString('id-ID')}</td>
+            <td>${rupiah(r.nominal||0)}</td>
+            <td>${escapeHtml(r.requester || '-')}</td>
+            <td>${escapeHtml(r.cabang || '-')}</td>
+            <td>${escapeHtml(r.jenis || '-')}</td>
+            <td>${escapeHtml(r.warehouse || '-')}</td>
+        </tr>
+    `).join('');
+}
+
+function refreshHistory() { loadHistoryFromServer(); }
+function clearHistory() {
+    if (confirm('Hapus seluruh history pengajuan (local browser)?')) {
+        localStorage.removeItem(LS_KEY_HISTORY);
+        renderHistoryFromLocal();
+    }
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]);
+    });
+}
+
+// Render history saat halaman dibuka (server dulu, lalu fallback local)
+document.addEventListener('DOMContentLoaded', () => { loadHistoryFromServer(); });
 </script>
 </body>
 </html>
