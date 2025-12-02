@@ -30,6 +30,50 @@ function table_has_column($conn, $table, $column) {
     } catch (Exception $e) { return false; }
 }
 
+// Resolve warehouse deduction target produk_id by category→segel mapping
+function resolve_segel_produk_id(mysqli $conn, int $produk_id): int {
+    $stmt = $conn->prepare("SELECT kategori FROM produk WHERE produk_id = ?");
+    $stmt->bind_param('i', $produk_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $kat = '';
+    if ($res && ($row = $res->fetch_assoc())) { $kat = strtolower(trim($row['kategori'] ?? '')); }
+    $stmt->close();
+
+    // Map kategori keywords → exact product names
+    $targetName = null;
+    if ($kat !== '') {
+        $isVoucher = strpos($kat, 'voucher') !== false;
+        $isPerdana = strpos($kat, 'perdana') !== false;
+        $hasLite   = strpos($kat, 'lite') !== false;
+        $hasByU    = strpos($kat, 'byu') !== false;
+        $hasRed    = strpos($kat, 'red') !== false || strpos($kat, 's261') !== false;
+
+        if ($isVoucher && $hasLite) {
+            $targetName = 'Voucher Fisik Segel Lite';
+        } elseif ($isVoucher && $hasByU) {
+            $targetName = 'Voucher Fisik Segel ByU';
+        } elseif ($isPerdana && $hasByU) {
+            $targetName = 'Perdana Segel ByU 0K';
+        } elseif ($isPerdana && ($hasLite || $hasRed)) {
+            $targetName = 'Perdana Segel Red 0K S261';
+        }
+    }
+
+    if ($targetName) {
+        $stmt2 = $conn->prepare("SELECT produk_id FROM produk WHERE status='active' AND LOWER(nama_produk) = LOWER(?) ORDER BY produk_id LIMIT 1");
+        $stmt2->bind_param('s', $targetName);
+        $stmt2->execute();
+        $res2 = $stmt2->get_result();
+        if ($res2 && ($row2 = $res2->fetch_assoc())) {
+            $stmt2->close();
+            return (int)$row2['produk_id'];
+        }
+        $stmt2->close();
+    }
+    return $produk_id; // fallback to original
+}
+
 if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = json_body();
     $tanggal = isset($body['tanggal']) ? $body['tanggal'] : date('Y-m-d');
@@ -39,11 +83,29 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($items)) { echo json_encode(['ok' => false, 'error' => 'Payload kosong']); exit; }
 
     $conn->begin_transaction();
+    $debugStock = isset($_GET['debug_stock']) && ($_GET['debug_stock'] === '1' || $_GET['debug_stock'] === 'true');
+    $debugDeducts = [];
     try {
         $insHeader = $conn->prepare("INSERT INTO pengajuan_stock (tanggal, rs_type, outlet_id, requester_id, jenis, warehouse_id, total_qty, total_saldo, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
         $insItem   = $conn->prepare("INSERT INTO pengajuan_stock_items (pengajuan_id, produk_id, qty, harga, nominal) VALUES (?,?,?,?,?)");
         // Prepared statement to fetch HPP Saldo per produk
         $stmtHarga = $conn->prepare("SELECT hpp_saldo FROM produk WHERE produk_id = ?");
+
+        // Inventory columns detection (optional status_approval)
+        $hasApproval = table_has_column($conn, 'inventory', 'status_approval');
+        // Build inventory insert prepared statements (with/without approval)
+        if ($hasApproval) {
+            $insInv = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, user_id, cabang_id, status_approval) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        } else {
+            $insInv = $conn->prepare("INSERT INTO inventory (produk_id, tanggal, tipe_transaksi, jumlah, stok_sebelum, stok_sesudah, referensi, keterangan, user_id, cabang_id) VALUES (?,?,?,?,?,?,?,?,?,?)");
+        }
+        // Prepared statement to compute stok sebelum per produk & cabang
+        $sumInv = $conn->prepare("SELECT COALESCE(SUM(CASE WHEN tipe_transaksi='masuk' THEN jumlah ELSE -jumlah END),0) AS total FROM inventory WHERE produk_id=? AND cabang_id=?");
+        // For debug enrichment
+        $stmtProdName = $conn->prepare("SELECT nama_produk FROM produk WHERE produk_id = ?");
+        $stmtCabName = $conn->prepare("SELECT nama_cabang FROM cabang WHERE cabang_id = ?");
+        $stmtResCab = $conn->prepare("SELECT cabang_id, nama_reseller FROM reseller WHERE reseller_id = ?");
+        $stmtOutletInfo = $conn->prepare("SELECT nama_outlet, nomor_rs FROM outlet WHERE outlet_id = ?");
 
         $created_by = isset($user['user_id']) ? intval($user['user_id']) : 0;
         $saved = 0;
@@ -84,6 +146,44 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$insHeader->execute()) throw new Exception('Gagal insert header: '.$conn->error);
             $pengajuan_id = $insHeader->insert_id;
 
+            // Resolve info for destination cabang (from requester)
+            $dest_cabang_id = null; $dest_cabang_name = null; $requester_name = null;
+            if ($requester_id > 0) {
+                try {
+                    $stmtResCab->bind_param('i', $requester_id);
+                    $stmtResCab->execute();
+                    $rres = $stmtResCab->get_result();
+                    if ($rres && ($rr = $rres->fetch_assoc())) {
+                        $dest_cabang_id = isset($rr['cabang_id']) ? (int)$rr['cabang_id'] : null;
+                        $requester_name = $rr['nama_reseller'] ?? '';
+                        if ($dest_cabang_id) {
+                            $stmtCabName->bind_param('i', $dest_cabang_id);
+                            $stmtCabName->execute();
+                            $rc = $stmtCabName->get_result();
+                            if ($rc && ($cr = $rc->fetch_assoc())) { $dest_cabang_name = $cr['nama_cabang']; }
+                        }
+                    }
+                } catch (Exception $e) { /* ignore */ }
+            }
+            $warehouse_name = null;
+            if ($warehouse_id > 0) {
+                try {
+                    $stmtCabName->bind_param('i', $warehouse_id);
+                    $stmtCabName->execute();
+                    $rcw = $stmtCabName->get_result();
+                    if ($rcw && ($cw = $rcw->fetch_assoc())) { $warehouse_name = $cw['nama_cabang']; }
+                } catch (Exception $e) { /* ignore */ }
+            }
+            $outlet_name = null; $no_rs = null;
+            if ($outlet_id > 0) {
+                try {
+                    $stmtOutletInfo->bind_param('i', $outlet_id);
+                    $stmtOutletInfo->execute();
+                    $roi = $stmtOutletInfo->get_result();
+                    if ($roi && ($oi = $roi->fetch_assoc())) { $outlet_name = $oi['nama_outlet']; $no_rs = $oi['nomor_rs']; }
+                } catch (Exception $e) { /* ignore */ }
+            }
+
             foreach ($computed as $pcalc) {
                 $produk_id = $pcalc['produk_id'];
                 $qty       = $pcalc['qty'];
@@ -91,13 +191,114 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nominal   = $qty * $harga;
                 $insItem->bind_param('iiidd', $pengajuan_id, $produk_id, $qty, $harga, $nominal);
                 if (!$insItem->execute()) throw new Exception('Gagal insert item: '.$conn->error);
+
+                // Insert inventory keluar log to deduct warehouse stock
+                // Apply category→segel mapping for deduction target
+                $target_produk_id = resolve_segel_produk_id($conn, $produk_id);
+                $sumInv->bind_param('ii', $target_produk_id, $warehouse_id);
+                $sumInv->execute();
+                $sumRes = $sumInv->get_result();
+                $stokSebelum = 0;
+                if ($sumRes && ($sr = $sumRes->fetch_assoc())) { $stokSebelum = (int)$sr['total']; }
+                // Pending approval flow: stok_sesudah equals stok_sebelum until approved
+                $stokSesudah = $stokSebelum;
+
+                $ref = 'PSAVF-' . $pengajuan_id;
+                $tujuan_text = $dest_cabang_name ? (' | Tujuan: ' . $dest_cabang_name) : '';
+                $rs_text = $outlet_name ? (' | RS: ' . $outlet_name . ($no_rs ? (' (' . $no_rs . ')') : '')) : '';
+                $ket = 'Pengajuan SA/VF: pengurangan stok gudang' . $tujuan_text . $rs_text . ' | Ref: ' . $ref;
+                $tipe = 'keluar';
+
+                if ($hasApproval) {
+                    $status = 'pending';
+                    $insInv->bind_param('issiiisssis', $target_produk_id, $tanggal, $tipe, $qty, $stokSebelum, $stokSesudah, $ref, $ket, $created_by, $warehouse_id, $status);
+                } else {
+                    $insInv->bind_param('issiiisssi', $target_produk_id, $tanggal, $tipe, $qty, $stokSebelum, $stokSesudah, $ref, $ket, $created_by, $warehouse_id);
+                }
+                if (!$insInv->execute()) throw new Exception('Gagal insert inventory keluar: '.$conn->error);
+
+                // Insert inventory masuk (pending) to destination cabang with ORIGINAL product (not segel)
+                if (!empty($dest_cabang_id)) {
+                    $sumInv->bind_param('ii', $produk_id, $dest_cabang_id);
+                    $sumInv->execute();
+                    $sumRes2 = $sumInv->get_result();
+                    $stokSebelumDest = 0;
+                    if ($sumRes2 && ($sd = $sumRes2->fetch_assoc())) { $stokSebelumDest = (int)$sd['total']; }
+                    $stokSesudahDest = $stokSebelumDest; // pending
+                    $tipe2 = 'masuk';
+                    $ket2 = 'Stock Masuk - Pengajuan SA/VF dari ' . ($warehouse_name ?: 'Warehouse') . $rs_text . ' | Ref: ' . $ref;
+                    if ($hasApproval) {
+                        $status2 = 'pending';
+                        $insInv->bind_param('issiiisssis', $produk_id, $tanggal, $tipe2, $qty, $stokSebelumDest, $stokSesudahDest, $ref, $ket2, $created_by, $dest_cabang_id, $status2);
+                    } else {
+                        $insInv->bind_param('issiiisssi', $produk_id, $tanggal, $tipe2, $qty, $stokSebelumDest, $stokSesudahDest, $ref, $ket2, $created_by, $dest_cabang_id);
+                    }
+                    if (!$insInv->execute()) throw new Exception('Gagal insert inventory masuk (tujuan): '.$conn->error);
+                }
+
+                if ($debugStock) {
+                    // Fetch readable names
+                    $origName = null; $targetName = null; $cabName = null;
+                    try {
+                        $stmtProdName->bind_param('i', $produk_id);
+                        $stmtProdName->execute();
+                        $rpn = $stmtProdName->get_result();
+                        if ($rpn && ($rn = $rpn->fetch_assoc())) { $origName = $rn['nama_produk']; }
+                    } catch (Exception $e) {}
+                    try {
+                        $stmtProdName->bind_param('i', $target_produk_id);
+                        $stmtProdName->execute();
+                        $rpn2 = $stmtProdName->get_result();
+                        if ($rpn2 && ($rn2 = $rpn2->fetch_assoc())) { $targetName = $rn2['nama_produk']; }
+                    } catch (Exception $e) {}
+                    try {
+                        $stmtCabName->bind_param('i', $warehouse_id);
+                        $stmtCabName->execute();
+                        $rcn = $stmtCabName->get_result();
+                        if ($rcn && ($cn = $rcn->fetch_assoc())) { $cabName = $cn['nama_cabang']; }
+                    } catch (Exception $e) {}
+                    $debugDeducts[] = [
+                        'direction' => 'keluar',
+                        'original_produk_id' => $produk_id,
+                        'original_produk' => $origName,
+                        'target_produk_id' => $target_produk_id,
+                        'target_produk' => $targetName,
+                        'qty' => $qty,
+                        'warehouse_id' => $warehouse_id,
+                        'warehouse' => $cabName,
+                        'stok_sebelum' => $stokSebelum,
+                        'stok_sesudah' => $stokSesudah,
+                        'dest_cabang_id' => $dest_cabang_id,
+                        'dest_cabang' => $dest_cabang_name
+                    ];
+                    if (!empty($dest_cabang_id)) {
+                        $debugDeducts[] = [
+                            'direction' => 'masuk',
+                            'original_produk_id' => $produk_id,
+                            'original_produk' => $origName,
+                            'qty' => $qty,
+                            'dest_cabang_id' => $dest_cabang_id,
+                            'dest_cabang' => $dest_cabang_name,
+                            'stok_sebelum' => $stokSebelumDest,
+                            'stok_sesudah' => $stokSesudahDest
+                        ];
+                    }
+                }
             }
             $saved++;
         }
 
         $conn->commit();
         if (isset($stmtHarga)) { $stmtHarga->close(); }
-        echo json_encode(['ok' => true, 'saved_outlets' => $saved]);
+        if (isset($insInv)) { $insInv->close(); }
+        if (isset($sumInv)) { $sumInv->close(); }
+        if (isset($stmtProdName)) { $stmtProdName->close(); }
+        if (isset($stmtCabName)) { $stmtCabName->close(); }
+        if (isset($stmtResCab)) { $stmtResCab->close(); }
+        if (isset($stmtOutletInfo)) { $stmtOutletInfo->close(); }
+        $resp = ['ok' => true, 'saved_outlets' => $saved];
+        if ($debugStock) { $resp['debug_deductions'] = $debugDeducts; }
+        echo json_encode($resp);
     } catch (Exception $e) {
         $conn->rollback();
         http_response_code(500);

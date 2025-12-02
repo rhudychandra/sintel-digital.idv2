@@ -538,6 +538,8 @@ const rsType = '<?php echo $rs_filter; ?>';
 const requesterList = <?php echo json_encode($requester_list); ?>;
 const cabangList = <?php echo json_encode($cabang_list); ?>;
 const outletList = <?php echo json_encode($outlet_js_list); ?>;
+const IS_ADMIN = <?php echo $user['role'] === 'administrator' ? 'true' : 'false'; ?>;
+const DEBUG_PAGE = <?php echo $DEBUG ? 'true' : 'false'; ?>;
 
 function showModernAlert(message, title = 'Pemberitahuan') {
     document.getElementById('modernAlertTitle').textContent = title;
@@ -941,14 +943,30 @@ async function simpanPengajuan() {
     
     // Simpan ke server
     try {
-        const resp = await fetch('api_pengajuan_sa_vf.php?action=save', {
+        const saveParams = new URLSearchParams({ action: 'save' });
+        if (IS_ADMIN && DEBUG_PAGE) { saveParams.append('debug_stock', '1'); }
+        const resp = await fetch(`api_pengajuan_sa_vf.php?${saveParams.toString()}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
         const result = await resp.json();
         if (!result.ok) throw new Error(result.error || 'Gagal menyimpan');
-        showModernAlert(`Berhasil menyimpan pengajuan untuk ${result.saved_outlets} outlet.`, 'Sukses');
+        let msg = `Berhasil menyimpan pengajuan untuk ${result.saved_outlets} outlet.`;
+        if (IS_ADMIN && DEBUG_PAGE && result.debug_deductions) {
+            try {
+                const lines = result.debug_deductions.map(d => {
+                    const dir = d.direction ? d.direction.toUpperCase() : 'KELUAR';
+                    const wh = d.warehouse ? `${d.warehouse} (#${d.warehouse_id||''})` : (d.dest_cabang ? `${d.dest_cabang} (#${d.dest_cabang_id||''})` : '');
+                    const op = d.original_produk || `#${d.original_produk_id}`;
+                    const tp = d.target_produk ? (d.target_produk + (d.target_produk_id?` (#${d.target_produk_id})`:'')) : '';
+                    const prodStr = d.direction === 'keluar' ? `${op} → ${tp}` : `${op}`;
+                    return `[${dir}] [${wh}] ${prodStr} | qty ${d.qty} | stok ${d.stok_sebelum}→${d.stok_sesudah}`;
+                });
+                if (lines.length) { msg += '<br><br><strong>Debug Deduct:</strong><br>' + lines.join('<br>'); }
+            } catch(_) { /* ignore */ }
+        }
+        showModernAlert(msg, 'Sukses');
         // Muat ulang history dari server
         await loadHistoryFromServer();
     } catch (e) {

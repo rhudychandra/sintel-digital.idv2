@@ -350,7 +350,7 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
     
     // Group by category with products and stock per cabang
     $stock_by_category_admin = [];
-    $all_products = $conn->query("SELECT produk_id, nama_produk, kategori, harga FROM produk WHERE status = 'active' ORDER BY kategori, nama_produk");
+    $all_products = $conn->query("SELECT produk_id, nama_produk, kategori, harga FROM produk WHERE status = 'active' OR produk_id IN (SELECT DISTINCT produk_id FROM inventory) ORDER BY kategori, nama_produk");
     
     while ($product = $all_products->fetch_assoc()) {
         $product_id = $product['produk_id'];
@@ -460,7 +460,7 @@ if (in_array($user['role'], ['administrator', 'manager'])) {
     
     // Get all products grouped by category
     $stock_by_category = [];
-    $all_products = $conn->query("SELECT produk_id, nama_produk, kategori, harga FROM produk WHERE status = 'active' ORDER BY kategori, nama_produk");
+    $all_products = $conn->query("SELECT produk_id, nama_produk, kategori, harga FROM produk WHERE status = 'active' OR produk_id IN (SELECT DISTINCT produk_id FROM inventory) ORDER BY kategori, nama_produk");
     
     while ($product = $all_products->fetch_assoc()) {
         $product_id = $product['produk_id'];
