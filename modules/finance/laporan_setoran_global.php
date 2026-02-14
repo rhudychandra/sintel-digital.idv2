@@ -268,6 +268,9 @@ function format_qty($qty) { return number_format((int)$qty, 0, ',', '.'); }
         <a href="../reports/index.php" class="action-card" title="Report Piutang">
             <div class="action-inner">Report PIUTANG</div>
         </a>
+        <a href="../reports/report_stock_piutang_tap.php" class="action-card" title="Stock Piutang TAP">
+            <div class="action-inner">Stock Piutang TAP</div>
+        </a>
         <a href="#" class="action-card" title="Report Stock & Transferan (Coming Soon)">
             <div class="action-inner">Report Stock dan Transferan</div>
         </a>
