@@ -115,16 +115,23 @@ $stmtPaid->close();
 </head>
 <body class="admin-page">
 	<div class="admin-container">
-		<aside class="admin-sidebar">
+		<aside class="admin-sidebar reports-sidebar">
 			<div class="sidebar-header">
 				<h2>Reports</h2>
-				<p><?php echo htmlspecialchars($user['full_name'] ?? ''); ?></p>
-				<small style="opacity:0.8;font-size:12px;">Report & Piutang</small>
+				<div class="sidebar-user-card">
+					<img src="<?php echo BASE_PATH; ?>/assets/images/logo_icon.png" alt="User" class="user-avatar" />
+					<div class="user-info">
+						<div class="user-name"><?php echo htmlspecialchars($user['full_name'] ?? ''); ?></div>
+						<div class="user-role"><?php echo htmlspecialchars($user['role'] ?? ''); ?></div>
+					</div>
+				</div>
+				<small class="sidebar-subtitle">Report & Piutang</small>
 			</div>
 			<nav class="sidebar-nav">
 				<a href="index.php" class="nav-item"><span class="nav-icon">🏠</span><span>Index Reports</span></a>
 				<a href="report_piutang_sa.php" class="nav-item"><span class="nav-icon">🧾</span><span>Report Piutang SA</span></a>
 				<a href="report_piutang_voucher.php" class="nav-item active"><span class="nav-icon">🎟️</span><span>Report Piutang Voucher</span></a>
+				<a href="report_stock_piutang_tap.php" class="nav-item"><span class="nav-icon">🏢</span><span>Stock Piutang TAP</span></a>
 			</nav>
 			<div class="sidebar-footer">
 				<a href="<?php echo BASE_PATH; ?>/dashboard" class="btn-back">← Kembali ke Dashboard</a>

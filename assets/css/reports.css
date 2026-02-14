@@ -14,3 +14,28 @@
 .table tbody tr:hover { background:#f8f9fb; }
 
 @media (max-width: 990px){ .report-grid{ flex-direction:column; } }
+
+/* Export button styling */
+.export-actions { display:flex; gap:12px; align-items:center; margin:8px 0 12px; }
+.btn-export { display:inline-flex; align-items:center; gap:8px; background:var(--accent); color:#fff; text-decoration:none; padding:8px 14px; border-radius:10px; border:1px solid #6f0f2d; box-shadow:0 2px 6px rgba(0,0,0,0.08); font-weight:600; font-size:12px; }
+.btn-export:hover { filter:brightness(1.05); box-shadow:0 3px 8px rgba(0,0,0,0.12); }
+.btn-export.secondary { background:#fff; color:var(--accent); border-color:var(--accent); }
+.btn-export.secondary:hover { background:#f8f9fb; }
+
+/* Reports sidebar polish (match inventory feel) */
+.reports-sidebar { background:linear-gradient(180deg, #8B1538 0%, #B8293A 60%, #C63F34 100%); color:#fff; }
+.reports-sidebar .sidebar-header { padding:16px; }
+.reports-sidebar .sidebar-user-card { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+.reports-sidebar .sidebar-user-card .user-avatar { width:48px; height:48px; border-radius:10px; object-fit:cover; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+.reports-sidebar .sidebar-user-card .user-info { display:flex; flex-direction:column; }
+.reports-sidebar .sidebar-user-card .user-name { font-weight:700; }
+.reports-sidebar .sidebar-user-card .user-role { opacity:0.9; font-size:12px; }
+.reports-sidebar .sidebar-subtitle { opacity:0.85; font-size:12px; display:block; margin-top:8px; }
+.reports-sidebar .sidebar-header h2 { color:#fff; letter-spacing:0.5px; }
+.reports-sidebar .sidebar-header p { margin:6px 0 4px; opacity:0.95; }
+.reports-sidebar .sidebar-nav { display:flex; flex-direction:column; gap:6px; padding:8px 12px; }
+.reports-sidebar .nav-item { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; padding:10px 12px; border-radius:10px; }
+.reports-sidebar .nav-item .nav-icon { width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.18); border-radius:6px; }
+.reports-sidebar .nav-item:hover { background:rgba(255,255,255,0.08); }
+.reports-sidebar .nav-item.active { background:rgba(255,255,255,0.20); }
+.reports-sidebar .btn-back, .reports-sidebar .btn-logout { display:inline-block; margin:6px 12px; color:#fff; text-decoration:none; font-size:12px; }

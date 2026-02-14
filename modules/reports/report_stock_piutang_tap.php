@@ -7,6 +7,13 @@ function h($s){return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');}
 function format_rp($n){return 'Rp ' . number_format((float)$n, 0, ',', '.');}
 function format_qty($q){return number_format((int)$q, 0, ',', '.');}
 
+// Dropdown cabang
+$cabangList = [];
+$resCab = $mysqli->query("SELECT cabang_id, nama_cabang FROM cabang WHERE status='active' ORDER BY nama_cabang");
+while ($rowCab = $resCab->fetch_assoc()) { $cabangList[] = $rowCab; }
+$resCab->close();
+$selectedCabangId = isset($_GET['cabang_id']) ? (int)$_GET['cabang_id'] : 0;
+
 // Compute stock per cabang (qty and nominal by harga jual) and piutang outstanding per cabang
 $rows = [];
 $sqlStock = "
@@ -68,11 +75,17 @@ for ($i=0; $i<count($rows); $i++) {
 </head>
 <body class="admin-page">
   <div class="admin-container">
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar reports-sidebar">
       <div class="sidebar-header">
         <h2>Reports</h2>
-        <p><?php echo htmlspecialchars($user['full_name'] ?? ''); ?></p>
-        <small style="opacity:0.8;font-size:12px;">Stock & Piutang TAP</small>
+        <div class="sidebar-user-card">
+          <img src="<?php echo BASE_PATH; ?>/assets/images/logo_icon.png" alt="User" class="user-avatar" />
+          <div class="user-info">
+            <div class="user-name"><?php echo htmlspecialchars($user['full_name'] ?? ''); ?></div>
+            <div class="user-role"><?php echo htmlspecialchars($user['role'] ?? ''); ?></div>
+          </div>
+        </div>
+        <small class="sidebar-subtitle">Stock & Piutang TAP</small>
       </div>
       <nav class="sidebar-nav">
         <a href="index.php" class="nav-item"><span class="nav-icon">🏠</span><span>Index Reports</span></a>
@@ -88,6 +101,25 @@ for ($i=0; $i<count($rows); $i++) {
 
     <main style="flex:1;margin-left:340px;padding:24px;">
       <h2>Stock Piutang TAP per Cabang</h2>
+      <div class="export-actions">
+        <a class="btn-export" href="export_stock_piutang_tap.php?scope=summary" title="Export per-cabang (CSV)">📥 Export Per-Cabang (CSV)</a>
+        <?php if ($selectedCabangId > 0): ?>
+          <a class="btn-export secondary" href="export_stock_piutang_tap.php?scope=detail&cabang_id=<?php echo (int)$selectedCabangId; ?>" title="Export detail cabang (CSV)">📥 Export Detail Cabang (CSV)</a>
+        <?php endif; ?>
+      </div>
+      <form method="get" style="margin:12px 0; display:flex; gap:12px; align-items:center;">
+        <label>Pilih Cabang:
+          <select name="cabang_id">
+            <option value="0">— Semua Cabang —</option>
+            <?php foreach ($cabangList as $c): ?>
+              <option value="<?php echo (int)$c['cabang_id']; ?>" <?php echo ($selectedCabangId === (int)$c['cabang_id']) ? 'selected' : ''; ?>>
+                <?php echo h($c['nama_cabang']); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary">Terapkan</button>
+      </form>
       <div class="card-summary">
         <?php 
           $sumQty = array_sum(array_map(function($r){ return (int)$r['qty_total']; }, $rows));
@@ -123,6 +155,69 @@ for ($i=0; $i<count($rows); $i++) {
           <?php endforeach; ?>
         </tbody>
       </table>
+
+      <?php if ($selectedCabangId > 0): ?>
+        <?php
+          $stmtProd = $mysqli->prepare(
+            "SELECT p.nama_produk, p.kategori,
+                    COALESCE(SUM(CASE 
+                      WHEN i.tipe_transaksi='masuk' THEN i.jumlah
+                      WHEN i.tipe_transaksi='keluar' THEN -i.jumlah
+                      WHEN i.tipe_transaksi='adjustment' THEN i.jumlah
+                      WHEN i.tipe_transaksi='return' THEN i.jumlah
+                      ELSE 0 END),0) AS qty_total,
+                    COALESCE(SUM(CASE 
+                      WHEN i.tipe_transaksi='masuk' THEN i.jumlah * p.harga
+                      WHEN i.tipe_transaksi='keluar' THEN -i.jumlah * p.harga
+                      WHEN i.tipe_transaksi='adjustment' THEN i.jumlah * p.harga
+                      WHEN i.tipe_transaksi='return' THEN i.jumlah * p.harga
+                      ELSE 0 END),0) AS nominal_stok
+             FROM produk p
+             LEFT JOIN inventory i ON i.produk_id = p.produk_id AND i.cabang_id = ?
+             WHERE p.status='active'
+             GROUP BY p.produk_id, p.nama_produk, p.kategori
+             ORDER BY p.kategori, p.nama_produk"
+          );
+          $stmtProd->bind_param('i', $selectedCabangId);
+          $stmtProd->execute();
+          $resProd = $stmtProd->get_result();
+          $prodRows = [];
+          while ($rr = $resProd->fetch_assoc()) {
+            if ((int)$rr['qty_total'] !== 0) { // tampilkan hanya yang ada stok
+              $prodRows[] = $rr;
+            }
+          }
+          $stmtProd->close();
+        ?>
+
+        <h3 style="margin-top:24px;">Detail Stok Cabang: <?php
+          $namaSel = ''; foreach ($cabangList as $c) { if ((int)$c['cabang_id'] === $selectedCabangId) { $namaSel = $c['nama_cabang']; break; } }
+          echo h($namaSel);
+        ?></h3>
+        <table class="table" cellspacing="0" cellpadding="6">
+          <thead>
+            <tr>
+              <th>Produk</th>
+              <th>Kategori</th>
+              <th>Qty Stok</th>
+              <th>Nominal Stok (Qty × Harga Jual)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($prodRows as $pr): ?>
+              <tr>
+                <td><?php echo h($pr['nama_produk']); ?></td>
+                <td><?php echo h($pr['kategori']); ?></td>
+                <td><?php echo format_qty($pr['qty_total']); ?></td>
+                <td><?php echo format_rp($pr['nominal_stok']); ?></td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (empty($prodRows)): ?>
+              <tr><td colspan="4">Tidak ada stok untuk cabang ini.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      <?php endif; ?>
     </main>
   </div>
 </body>
